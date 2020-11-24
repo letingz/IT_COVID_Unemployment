@@ -1,0 +1,368 @@
+---
+title: "Cybersecurity and Future of Working from Home - Report"
+author: "LetingZhang"
+date: "11/24/2020"
+output: html_document
+---
+
+
+
+```{r Load packages, include=FALSE }
+library(dplyr, warn.conflicts = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(plm)
+library(DT)
+library(psych)
+library(Hmisc)
+library(labelVector)
+library(stargazer)
+```
+
+```{r R Markdown setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import Data
+
+
+- Unemployement insurance claim data  & Employment data from EconomicTracker
+
+```{r load unemploymenet data - EconomicTracker, include=FALSE}
+#source: https://github.com/OpportunityInsights/EconomicTracker
+
+ui_data <- read.csv("data/UI Claims - County - Weekly.csv", stringsAsFactors = F)
+employ_data <- read.csv("data/Employment Combined - County - Daily.csv",  stringsAsFactors = F)
+
+
+ui_data$initclaims_count_regular<- as.numeric (ui_data$initclaims_count_regular)
+ui_data$initclaims_rate_regular <- as.numeric(ui_data$initclaims_rate_regular)
+
+employ_data[, c(5:8)] <- apply(employ_data[, c(5:8)], 2, function(x) as.numeric(x))
+
+
+
+```
+
+
+- Unemployement data from IPUMS CPS - Not good for county level analysis. Many observations do not have county info.
+```{r load unemployement data ipums CPS,include=FALSE}
+#source: ipums
+library(ipumsr)
+
+# Change these filepaths to the filepaths of your downloaded extract
+cps_ddi_file <- "cps_00003.xml"
+cps_data_file <- "cps_00003.dat"
+cps_ddi <- read_ipums_ddi(cps_ddi_file) # Contains metadata, nice to have as separate object
+cps_data <- read_ipums_micro(cps_ddi_file, data_file = cps_data_file)
+```
+
+
+- Cybersecurity investment data from CI database
+```{r CI data, include=FALSE}
+
+ci_data <- read.csv("data/CI_cyber_use.csv")
+
+```
+
+```{r load cencus data & geography crosswalk file, include=FALSE}
+#source: census website PS: USE THE NEW ONE 
+#industry_code <- read.csv("cps_monthly_data/2017-census-industry-classification-titles-and-code-list.csv")
+#occupation_code<-read.csv("cps_monthly_data/2018-census-occupation-classification-titles-and-code-list.csv")
+geo_code <- read.csv("data/geocorr2018 -crosswalk.csv")
+
+#source: https://www.huduser.gov/portal/datasets/usps_crosswalk.html
+zip_county <- read.csv("data/ZIP_COUNTY_122019.csv")
+
+#source: https://data.nber.org/cbsa-msa-fips-ssa-county-crosswalk/2019/
+msa_county <- read.csv("data/COUNTY_METRO2019.CSV")
+
+
+# EconomicTrack
+geoid <- read.csv("data/GeoIDs - County.csv", stringsAsFactors = F)
+
+```
+
+- State stay-at-home order data from a website
+```{r load state policy data and clean (ealier) Shelter-in-plance data, include=FALSE}
+# source: EconomicTracker 
+
+state_policy  <- read.csv("data/Policy Milestones - State.csv", stringsAsFactors = T)
+
+#Source: https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
+#Reference: https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
+shelterdate <- read.csv("data/shelter-in-place.csv")
+shelterdate$State <- str_replace_all(shelterdate$State, "[*]", "") #Remove * in state names
+
+
+state_info<-data.frame(abb = state.abb, state = state.name)
+state_info[] <- lapply(state_info, as.character)
+
+state_info[nrow(state_info) + 1,] = c( "DC", "District of Columbia")
+state_info[nrow(state_info) + 1,] = c("PR", "Puerto Rico")
+
+
+shelterdate <- merge(shelterdate,state_info, by.x = "State", by.y = "state", all.x = TRUE )
+shelterdate$Order.Date <- str_replace_all(shelterdate$Order.Date, "/2020", "") #Remove * in state names
+shelterdate$Order.Date1 <- shelterdate$Order.Date
+
+shelterdate <- shelterdate %>% separate("Order.Date1", c("OrderMonth", "OrderDay"))
+
+shelterdate$OrderMonth <- as.integer(shelterdate$OrderMonth)
+shelterdate$OrderDay <- as.integer(shelterdate$OrderDay)
+
+#National Emergency Concerning: March 13 
+#Reference: https://www.whitehouse.gov/presidential-actions/proclamation-declaring-national-emergency-concerning-novel-coronavirus-disease-covid-19-outbreak/
+
+
+```
+
+
+- Covid19-data from NYTimes
+
+```{r load covid19-data, include=FALSE}
+
+covid <- read.csv("data/COVID - County - Daily.csv", stringsAsFactors = F)
+```
+
+```{r Othes, include=FALSE}
+# State level
+cps_data_demo<-cps_data # data backup
+cps_data_demo$YearMonth <- with(cps_data_demo, sprintf("%d-%02d", YEAR, MONTH))
+
+```
+
+
+```{r geography data clean - state, include=FALSE}
+
+
+#cps-state
+geo_code_state <- geo_code[c("state","stab")]
+geo_code_state <- geo_code_state[!duplicated(geo_code_state$state),]
+geo_code_state$state <- as.numeric(as.character(geo_code_state$state))
+
+cps_data_demo$state_fip <- as.numeric(as.character(cps_data_demo$STATEFIP))
+cps_data_demo <- merge(cps_data_demo, geo_code_state, by.x = "state_fip", by.y = "state", all.x = TRUE)
+cps_data_demo <- merge(cps_data_demo,shelterdate[,c('abb','OrderMonth', 'OrderDay')], by.x = "stab", by.y = "abb", all.x = TRUE)
+
+
+
+#ZIP-county data 
+zip_county_use <- subset(zip_county, TOT_RATIO > 0.5 ) # Caveat
+
+#MSA_County data
+msa_county_use <- msa_county[,c(1,4,6)]
+msa_county_use <- msa_county_use[!duplicated(msa_county_use),]
+
+```
+
+
+```{r ci geography merge, include=FALSE}
+ci_data_key <- ci_data[, c("SITEID","ZIPCODE")]
+ci_data_key$ZIPCODE <- substr(ci_data[, c("SITEID","ZIPCODE")]$ZIPCODE,1,5)
+ci_data_key$ZIPCODE <- sub("^0+", "", ci_data_key$ZIPCODE)
+ci_data_key$ZIPCODE <- as.integer(ci_data_key$ZIPCODE)
+
+ci_data_key <- merge(ci_data_key, zip_county_use[, c("ZIP", "COUNTY")], by.x = "ZIPCODE", by.y = "ZIP", all.x = TRUE)
+ci_data_key <- merge(ci_data_key, msa_county_use, by.x = "COUNTY", by.y = "FIPS.County.Code",all.x = TRUE )
+
+#Merge
+ci_data_use <- merge(ci_data, ci_data_key, by = "SITEID",all.x = TRUE)
+
+```
+
+
+
+```{r Control variable, include=FALSE}
+#Covid
+
+str(covid)
+covid[, c(5:12)] <- sapply(covid[, c(5:12)], as.numeric)
+
+covid_county <- covid %>% 
+  group_by(countyfips,month) %>% 
+  summarise(avg_case_rate = mean(case_rate, na.rm = T),
+            avg_death_rate = mean(death_rate, na.rm = T),
+            avg_new_case_rate = mean(new_case_rate, na.rm = T),
+            avg_new_death_rate = mean(new_death_rate, na.rm =T))
+
+```
+
+```{r, include=FALSE}
+ui_county_mean <- ui_data %>% 
+  group_by(month, countyfips) %>% 
+  summarise (avg_initclaims_count = mean(initclaims_count_regular, na.rm = T),
+             avg_initclaims_rate = mean(initclaims_rate_regular, na.rm = T)  )
+  
+
+employ_mean <- employ_data %>% 
+  group_by(month, countyfips) %>% 
+  summarise_at(c("emp_combined","emp_combined_inclow", "emp_combined_incmiddle", "emp_combined_inchigh"), mean, na.rm = TRUE)
+
+
+ci_county_mean <- ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN, cyber_sum,PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(COUNTY) %>% 
+  summarise_at(c("EMPLE","REVEN", "cyber_sum", "PCS", "IT_BUDGET", "HARDWARE_BUDGET", "SOFTWARE_BUDGET" , "SERVICES_BUDGET"), mean, na.rm = TRUE) %>% 
+  arrange(desc(SOFTWARE_BUDGET))
+
+
+ci_county_median <- ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN, cyber_sum,PCS, IT_BUDGET, HARDWARE_BUDGET,SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(COUNTY) %>% 
+  summarise_at(c("EMPLE","REVEN", "cyber_sum", "PCS", "IT_BUDGET", "HARDWARE_BUDGET", "SOFTWARE_BUDGET" , "SERVICES_BUDGET"), median, na.rm = TRUE) %>% 
+  arrange(desc(cyber_sum))
+```
+
+
+# Descriptive Analyses
+
+```{r Unemployment insurance - Economic Tracker, }
+# UI Claim
+ui_data %>% 
+  group_by(month) %>% 
+  summarise (avg_initclaims_county = mean(initclaims_count_regular, na.rm = T),
+             avg_unemploy_rate = mean(initclaims_rate_regular, na.rm = T)  ) %>% 
+  ggplot(mapping = aes(x = as.character(month), y =  avg_unemploy_rate, group = 1)) +
+  geom_line() +
+  ggtitle("Unmployment insurance claim rates ")+
+  theme(plot.title = element_text(hjust = 0.5))
+  
+
+# Employee data, the lowest one is the low income employment
+employ_data %>% 
+  group_by(month) %>% 
+  summarise_at(c("emp_combined","emp_combined_inclow", "emp_combined_incmiddle", "emp_combined_inchigh"), mean, na.rm = TRUE) %>% 
+  ggplot(mapping = aes(x = as.character(month), group = 1)) +
+  geom_line( aes(y =  emp_combined), size = 1) + 
+  geom_line( aes(y =  emp_combined_inclow) , color ="#48CAE4"  , linetype="twodash", size = 1) +
+  geom_line( aes(y =  emp_combined_incmiddle), color = "#0096C7", linetype="twodash", size = 1) +
+  geom_line( aes(y =  emp_combined_inchigh), color = "#03045E", linetype="twodash", size = 1) +
+  ggtitle("Relative changes to employment rates (High, middle, all, low)" ) +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+  
+
+
+
+```
+
+
+
+```{r create panel data, include=FALSE }
+
+
+# create mean panel
+
+mean_panel_x <- merge(ci_county_mean, geoid[, c("countyfips","statename", "stateabbrev", "county_pop2019")],
+                        by.x = "COUNTY", by.y = "countyfips", all.x = TRUE)
+mean_panel_y <- merge(employ_mean, ui_county_mean , by = c("countyfips","month") , all = T  )
+
+mean_panel <- merge(mean_panel_x, mean_panel_y, by.x = "COUNTY", by.y = "countyfips", all = TRUE )
+
+mean_panel <- merge(mean_panel, shelterdate[, c('abb','OrderMonth','OrderDay')], by.x = "stateabbrev", by.y = "abb", all = T)
+
+mean_panel <- mean_panel[c(2,13,1,3:12,14:21)] 
+
+
+mean_panel <- merge(mean_panel, covid_county, by.x = c('COUNTY','month'), by.y = c('countyfips','month'), all.x = T)
+
+mean_panel <- mean_panel %>% 
+  mutate(home = ifelse( (month < OrderMonth) | (is.na(OrderMonth)), 0 ,1),
+         mean_cyber = mean(cyber_sum,  na.rm = T),
+         mid_cyber = median(cyber_sum, na.rm = T)) 
+
+mean_panel <- mean_panel %>% 
+  mutate(high_cyber = ifelse(cyber_sum > mean_cyber, 1, 0))
+
+```
+
+
+```{r}
+
+variable <- c('COUNTY', 'month','home','high_cyber','cyber_sum','avg_initclaims_rate','emp_combined','emp_combined_inclow', 'emp_combined_incmiddle','emp_combined_inchigh','avg_case_rate','avg_death_rate')
+
+mean_panel <- mean_panel[,variable]
+
+mean_panel <- set_label(mean_panel, 
+                         COUNTY = 'County', 
+                         month = 'Month', 
+                         home = 'Stay at Home Order',
+                         high_cyber = 'High Cybersecurity Investment',
+                         cyber_sum = 'Cybersecurity Investment', 
+                         avg_initclaims_rate = 'UI Rate', 
+                         emp_combined = 'Employment Rate', 
+                         emp_combined_inclow = 'Low Income Employment', 
+                         emp_combined_incmiddle = 'Middle Income Employment',
+                         emp_combined_inchigh = 'HIgh Income Employment',
+                         avg_case_rate = 'COVID Case Rate',
+                         avg_death_rate = ' COVID Death Rate')
+
+
+describe(mean_panel[, variable]) %>% html()
+
+```
+
+
+# Regression Results
+```{r Regression}
+# fixed effect index
+
+attach(mean_panel)
+
+mean_panel <- mean_panel[order(COUNTY,month),]
+panel_use <- mean_panel[which(!is.na(mean_panel$COUNTY) & !is.na(mean_panel$month) ),]
+#panel_use2 <-mean_panel[,c("COUNTY","month", "avg_initclaims_rate","EMPLE", "REVEN", "PCS")]
+#write.csv(panel_use, "panel_use.csv")
+
+
+
+```
+
+## Main specifications
+
+$$ UIClaimRate_it = \beta_{1} StayAtHome_{it}*HighCybersecurity_{i} + \beta_{2} CovidCase_{it}+  \beta_{3} CovidDeath_{it} + county_{i} + month_{t} + \epsilon_{it} $$
+
+
+
+```{r}
+
+# County fixed effect
+reg_fe <- plm(avg_initclaims_rate~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use)
+
+# Two-way fixed effect
+reg_twoway <- plm(avg_initclaims_rate~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+# Use cybersecurity investment as moderator
+reg_twoway2 <- plm(avg_initclaims_rate~home*cyber_sum+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+
+
+```
+
+```{r, results='asis'}
+stargazer(reg_fe,reg_twoway,reg_twoway2, type = "html",  #we use html output to match our planned R Markdown output
+     title = "Dv: Unemployement Insurance Claim Rate", covariate.labels = c("StayAtHome", "CovidCase", "CovidDeath",  "StayAtHome*HighCyber", "StayAtHome*Cyber"), dep.var.labels = "UI Claim Rate", df = FALSE, style = "qje")
+
+```
+
+$$ EmploymentRate_it = \beta_{1} StayAtHome_{it}*Cybersecurity_{i} + \beta_{2} CovidCase_{it}+  \beta_{3} CovidDeath_{it} + county_{i} + month_{t} + \epsilon_{it}$$
+```{r}
+reg_emp <- plm(emp_combined~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+reg_emp_low <- plm(emp_combined_inclow~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+reg_emp_mid <- plm(emp_combined_incmiddle~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+reg_emp_high <- plm(emp_combined_inchigh~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+```
+
+```{r, results='asis'}
+
+stargazer(reg_emp,reg_emp_low,reg_emp_mid,reg_emp_high, type = "html",  #we use html output to match our planned R Markdown output
+     title = "DV:Employment Rate", covariate.labels = c("StayAtHome", "CovidCase", "CovidDeath",
+                               "StayAtHome*HighCyber"),  dep.var.labels   = c('Combined','Low Income','Middle Income','High Income'), df = FALSE, style = "qje")
+
+
+```
+
+
