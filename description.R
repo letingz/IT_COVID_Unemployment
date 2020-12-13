@@ -23,7 +23,6 @@ table(sub_husa$COMPOTHX)
 table(sub_husa$HISPEED)
 table(sub_husa$LAPTOP)
 
-
 table(sub_husb$ACCESS)
 table(sub_husb$BROADBND)
 table(sub_husb$COMPOTHX)
