@@ -59,7 +59,9 @@ ci_path <- readWindowsShortcut("data/CI_USA_2019.lnk")
 ci_path <- gsub("\\\\", "/", ci_path$pathname)
 
 ci_cyber <- read.csv("data/CI_cyber_use.csv")
-ci_cyber <- subset(ci_cyber, select = c('SITEID','cyber_sum', 'PCS','IT_BUDGET', 'HARDWARE_BUDGET', 'SOFTWARE_BUDGET', 'SERVICES_BUDGET'))
+
+
+ci_cyber <- subset(ci_cyber, select = c('SITEID','cyber_sum', 'IT_STAFF','PCS'))
 
 path <- paste(ci_path, '/SiteDescription.TXT', sep = '')
 col <-  c('SITEID', 'PRIMARY_DUNS_NUMBER', 'COMPANY', 'CITY','STATE','ZIPCODE','COUNTRY' ,'YEAR_EST', 'COUNTY_NAME', 'MSA','EMPLE','REVEN','SALESFORCE','MOBILE_WORKERS','MOBILE_INTL', 'IT_STAFF', 'PC_BUDGET', 'SICGRP', 'SICSUBGROUP')
@@ -72,6 +74,10 @@ ci_presence[ci_presence == "Yes"] <- 1
 ci_presence[ci_presence == ""] <- 0
 ci_presence <- as.data.frame(ci_presence)
 ci_presence[, 2:6] <- sapply(ci_presence[, 2:6], as.numeric )
+
+path <- paste(ci_path, '/ITSpend.TXT', sep = '')
+ci_itspend <- fread(path)
+ci_itspend<- as.data.frame(ci_itspend)
 
 path <- paste(ci_path, '/SiteLevelEnterprise.TXT', sep = '')
 col <-  c('SITEID', 'ENT_ID', 'ENT_COMPANY', 'CORPHDQ', 'ENT_TYPE', 'ENT_EMPLE', 'ENT_REVEN', 'ENT_IT_EMPLE','ENT_SERVER','ENT_STORAGE' , 'ENT_INTERNET_USERS', 'ENT_SERVER_BUDGET', 'ENT_TERMINAL_BUDGET', 'ENT_STORAGE_BUDGET','ENT_COMM_BUDGET', 'ENT_SERVICES_BUDGET')
@@ -207,7 +213,14 @@ ci_data_key <- merge(ci_data_key, msa_county_use, by.x = "COUNTY", by.y = "FIPS.
 ci_data_use <- merge(ci_site, ci_data_key[, -2], by = "SITEID",all.x = TRUE)
 ci_data_use <- merge(ci_data_use, ci_cyber, by = "SITEID",all.x = TRUE)
 ci_data_use <- merge(ci_data_use, ci_presence, by = "SITEID",all.x = TRUE)
+ci_data_use <- merge(ci_data_use, ci_itspend, by = "SITEID",all.x = TRUE)
 ci_data_use <- merge(ci_data_use, ci_enterprise, by = "SITEID",all.x = TRUE)
+
+rm(ci_site, ci_presence, ci_itspend, ci_enterprise )
+
+
+str(ci_data_use)
+
 
 ```
 
@@ -410,8 +423,7 @@ ci_county_median <- ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA
 
 ## Raw data for STATA 
 
-ci_raw <- merge(ci_data_use, geoid[, c("countyfips","statename", "stateabbrev", "county_pop2019")],
-                        by.x = "COUNTY", by.y = "countyfips", all.x = TRUE )
+ci_raw <- merge(ci_data_use, geoid[, c("countyfips","statename", "stateabbrev", "county_pop2019")], by.x = "COUNTY", by.y = "countyfips", all.x = TRUE )
 write.csv(ci_raw, "data/output/ci_raw.csv")
 
 county_raw <- merge(employ_mean, ui_county_mean , by = c("countyfips","month"), all = T  )
