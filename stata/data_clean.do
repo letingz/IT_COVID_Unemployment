@@ -35,6 +35,13 @@ rename no_it_employee15 no_it_employee7
 
 save stata\ci_raw.dta
 
+* Import EconTrack Data 
+
+import delimited data\output\econ_mean.csv
+drop v1
+destring spend_all gps_retail_and_recreation gps_grocery_and_pharmacy gps_parks gps_transit_stations gps_workplaces gps_residential gps_away_from_home merchants_all revenue_all, replace force
+rename countyfips county
+save stata\econ_panel.dta
 
 * Create CI county level data
 
@@ -77,6 +84,7 @@ generate afterstayhome = (month > ordermonth)
 egen mean_cyber = mean( sum_cyber_sum )
 g high_cyber = ( sum_cyber_sum >mean_cyber )
 
+
 local sumvar "sum_emple sum_reven sum_salesforce sum_mobile_workers sum_cyber_sum sum_pcs sum_it_budget sum_hardware_budget sum_software_budget sum_services_budget sum_vpn_pres sum_idaccess_sw_pres sum_dbms_pres sum_datawarehouse_sw_pres sum_security_sw_pres sum_AG_M_C sum_EDUC sum_F_I_RE sum_GOVT sum_MANUF sum_MED sum_NON_CL sum_SVCS sum_TR_UTL sum_WHL_RT"
 
 
@@ -84,8 +92,12 @@ foreach i of local sumvar {
 	g ln_`i' = ln(`i'+1)
 }
 
-save "stata\panel202012.dta"
 
+*Merge
+
+drop _merge
+merge 1:1 county month using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\econ_panel.dta"
+save "stata\panel202012.dta"
 
 local depvar  "avg_initclaims_count avg_initclaims_rate emp_combined emp_combined_inclow emp_combined_incmiddle emp_combined_inchigh"
 
@@ -96,8 +108,6 @@ foreach i of local depvar {
 	areg `i' afterstayhome##c.ln_sum_cyber_sum afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven i.month,  absorb(county) rob
 	areg `i' afterstayhome##c.ln_sum_cyber_sum afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven  i.month,  absorb(county) rob
 	areg `i' afterstayhome afterstayhome##c.ln_sum_cyber_sum afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven afterstayhome##c.ln_sum_vpn_pres afterstayhome##c.ln_sum_dbms_pres afterstayhome##c.ln_sum_datawarehouse_sw_pres afterstayhome##c.ln_sum_security_sw_pres afterstayhome##c.sum_AG_M_C afterstayhome##c.sum_EDUC afterstayhome##c.sum_F_I_RE  avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
-
-	
 	}
 
 
@@ -113,3 +123,6 @@ foreach i of local depvar {
 	
 	}
 
+	*2020
+	areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
+areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
