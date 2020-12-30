@@ -175,6 +175,30 @@ generate afterstayhome = (month > ordermonth)
 egen mean_cyber = mean( cyber_sum )
 g high_cyber = ( cyber_sum >mean_cyber )
 
+
+
+* Label data
+label variable avg_initclaims_count "Count of initial claims, regular UI only"
+label variable avg_initclaims_rate "Number of initial claims per 100 people in the 2019 labor force"
+
+label variable emp_combined "Employment level for all workers"
+label variable emp_combined_inclow "Employment level for low income workers"
+label variable emp_combined_incmiddle "Employment level for middle income workers"
+label variable emp_combined_inchigh "Employment level for high income workers"
+
+label variable spend_all "Spending in all merchant category codes"
+label variable merchants_all "Percent change in number of small businesses open"
+label variable revenue_all "Percent change in net revenue for small businesses"
+
+label variable case_count "Confirmed COVID-19 cases"
+label variable death_count "Confirmed COVID-19 deaths"
+label variable case_rate "Confirmed COVID-19 cases per 100,000 people"
+label variable death_rate "Confirmed COVID-19 deaths per 100,000 people"
+label variable avg_new_case_count "New confirmed COVID-19 cases"
+label variable avg_new_case_rate "New confirmed COVID-19 cases per 100,000 people"
+label variable avg_new_death_rate "New confirmed COVID-19 deaths per 100,000 people"
+label variable afterstayhome "After Stay-at-Home"
+
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\county_panel.dta"
 
 * Create state panel 
@@ -185,24 +209,160 @@ destring statefips  month ordermonth orderday, replace ignore("NA")
 xtset statefips month
 xtdescribe
 
+bys statefips: replace ordermonth = ordermonth[_n-1] if ordermonth ==.
+bys statefips: replace orderday = orderday[_n-1] if orderday ==.
+
+generate afterstayhome = (month > ordermonth)
+save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\state_panel.dta"
+
+* Label data  -State level 
+
+label variable initclaims_count_regular "Count of initial claims, regular UI only"
+notes initclaims_rate_regular : Number of initial claims per 100 people in the 2019 labor force, Regular UI only
+label variable initclaims_rate_regular "Number of initial claims per 100 people in the 2019 labor force"
+label variable contclaims_count_regular "Count of initial claims "
+label variable contclaims_count_regular "Count of continued claims, Regular UI only"
+label variable contclaims_rate_regular ": Number of continued claims per 100 people in the 2019 labor force, Regular UI only"
+label variable contclaims_rate_regular " Number of continued claims per 100 people in the 2019 labor force, Regular UI "
+label variable contclaims_rate_regular "Number of continued claims per 100 people in the 2019 labor force, Regular UI "
+label variable initclaims_count_pua "Count of initial claims, PUA (Pandemic Unemployment Assistance) only"
+label variable contclaims_count_pua "Count of continued claims, PUA (Pandemic Unemployment Assistance) only"
+
+label variable emp_combined " Employment level for all workers."
+label variable emp_combined_inclow "Employment level for low income workers"
+label variable emp_combined_incmiddle "Employment level for middle income workers"
+label variable emp_combined_inchigh "Employment level for high income workers"
+notes emp_combined_incmiddle : (incomes approximately $27,000 to $60,000)
+notes emp_combined_inchigh :  (incomes approximately over $60,000).
+label variable emp_combined_ss40 ": Employment level for workers in trade, transportation and utilities"
+label variable emp_combined_ss40 "Employment level for workers in trade, transportation and utilities"
+label variable emp_combined_ss60 "Employment level for workers in professional and business services"
+label variable emp_combined_ss65 "Employment level for workers in education and health services "
+label variable emp_combined_ss70 " Employment level for workers in leisure and hospitality (NAICS supersector 70)"
+
+label variable spend_acf "spending relative to January 4-31 2020 in accomodation and food service (ACF)"
+label variable spend_acf "spending in accomodation and food service (ACF)"
+notes spend_acf : relative to January 4-31 2020
+label variable spend_acf "Spending in accomodation and food service (ACF)"
+label variable spend_aer "Spending in accomodation and food service (ACF)"
+label variable spend_aer "Spending in arts, entertainment, and recreation (AER)"
+label variable spend_all "Spending in all merchant category codes"
+label variable spend_apg "all merchant category codes"
+label variable spend_apg "Spending in"
+label variable spend_grf "Spending in"
+label variable spend_hcs "Spending in"
+label variable spend_tws "Spending in"
+label variable spend_apg "Spending in general merchandise stores (GEN) and apparel and accessories (AAP) MCCs"
+label variable spend_grf "Spending in grocery and food store (GRF) "
+label variable spend_hcs "Spending in  health care and social assistance (HCS) "
+label variable spend_tws "Spending in transportation and warehousing (TWS) "
+label variable spend_all_inchigh "spending by consumers living in ZIP codes with high  median income"
+label variable spend_all_inclow "spending by consumers living in ZIP codes with middle income"
+label variable spend_all_incmiddle "spending by consumers living in ZIP codes with low income"
+
+label variable bg_posts "Average level of job postings"
+notes bg_posts :  relative to January 4-31 2020
+label variable bg_posts_ss30 "Average level of job postings"
+label variable bg_posts_ss55 "Average level of job postings"
+label variable bg_posts_ss60 "Average level of job postings"
+label variable bg_posts_ss65 "Average level of job postings"
+label variable bg_posts_ss70 "Average level of job postings"
+label variable bg_posts_ss30 "Average level of job postings in manufacturing"
+label variable bg_posts_ss55 "Average level of job postings in financial activities "
+label variable bg_posts_ss60 "Average level of job postings in professional and business services "
+label variable bg_posts_ss65 "Average level of job postings in education and health services"
+label variable bg_posts_ss70 "Average level of job postings in leisure and hospitality"
+label variable bg_posts_jz1 " requiring little/no preparation"
+label variable bg_posts_jz1 " Average level of job postings requiring little/no preparation"
+label variable bg_posts_jzgrp12 "Average level of job postings"
+label variable bg_posts_jz2 "Average level of job postings"
+label variable bg_posts_jz3 "Average level of job postings"
+label variable bg_posts_jzgrp345 "Average level of job postings"
+label variable bg_posts_jz4 "Average level of job postings"
+label variable bg_posts_jz5 "Average level of job postings"
+label variable bg_posts_jzgrp12 "Average level of job postings requiring low preparation"
+notes bg_posts_jz1 : ONET jobzone level 1
+label variable bg_posts_jz2 "Average level of job postings  requiring some preparation"
+label variable bg_posts_jz3 "Average level of job postings requiring medium preparation"
+label variable bg_posts_jzgrp345 "Average level of job postings requiring high preparation"
+label variable bg_posts_jz4 "Average level of job postings requiring considerable preparation"
+label variable bg_posts_jz5 "Average level of job postings requiring extensive preparation "
+
+label variable merchants_all " Percent change in number of small businesses open "
+label variable merchants_inchigh "Percent change in number of small businesses open in high income ZIP codes"
+label variable merchants_all "Percent change in number of small businesses open "
+label variable merchants_inclow "Percent change in number of small businesses open in middle income ZIP codes"
+label variable merchants_incmiddle "Percent change in number of small businesses open in middle income ZIP codes"
+label variable merchants_ss40 "Percent change in number of small businesses open"
+label variable merchants_ss40 "Transportation - Percent change in number of small businesses open"
+label variable merchants_ss60 "Percent change in number of small businesses open"
+label variable merchants_ss65 "Percent change in number of small businesses open"
+label variable merchants_ss70 "Percent change in number of small businesses open"
+label variable merchants_ss60 "Professional and business services - Percent change in number of small businesses open"
+label variable merchants_ss65 "education and health services  - Percent change in number of small businesses open"
+label variable merchants_ss65 "Education and health services  - Percent change in number of small businesses op"
+label variable merchants_ss70 " Leisure and hospitality - Percent change in number of small businesses open"
+label variable merchants_ss70 "Leisure and hospitality - Percent change in number of small businesses open"
+
+label variable revenue_all "Percent change in net revenue for small businesses"
+label variable revenue_ss40 "Transportation"
+label variable revenue_ss60 "Professional and business services"
+label variable revenue_ss65 "Education and health services"
+label variable revenue_ss70 "Leisure and hospitality"
+
+label variable test_count "Confirmed COVID-19 tests"
+label variable test_rate "Confirmed COVID-19 tests per 100,000 people"
+label variable case_count "Confirmed COVID-19 cases"
+label variable death_count "Confirmed COVID-19 deaths"
+label variable case_rate "Confirmed COVID-19 cases per 100,000 people"
+label variable death_rate "Confirmed COVID-19 deaths per 100,000 people"
+
+label variable avg_new_case_count "New confirmed COVID-19 cases"
+label variable avg_new_death_rate "New confirmed COVID-19 deaths"
+label variable avg_new_case_count "New confirmed COVID-19 cases"
+label variable avg_new_case_rate " New confirmed COVID-19 cases per 100,000 people"
 
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\state_panel.dta"
 
 
-********************* Here 20201226
+local ci " siteid emple reven salesforce mobile_workers cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres no_it_employee1 no_it_employee3 no_it_employee6 no_it_employee4 no_it_employee7 no_it_employee2 no_it_employee5 no_it_employee8 no_it_employee0 sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10 "
 
-local sumvar "sum_emple sum_reven sum_salesforce sum_mobile_workers sum_cyber_sum sum_pcs sum_it_budget sum_hardware_budget sum_software_budget sum_services_budget sum_vpn_pres sum_idaccess_sw_pres sum_dbms_pres sum_datawarehouse_sw_pres sum_security_sw_pres sum_AG_M_C sum_EDUC sum_F_I_RE sum_GOVT sum_MANUF sum_MED sum_NON_CL sum_SVCS sum_TR_UTL sum_WHL_RT"
-
-
-foreach i of local sumvar {
+foreach i of local ci {
 	g ln_`i' = ln(`i'+1)
 }
 
+local sic "sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10"
 
+foreach i of local sic {
+    g per_`i' = `i'/siteid
+}
+
+egen mean_itbudget = mean(it_budget)
+g high_itbudget = (it_budget> mean_itbudget )
+
+
+**************
+
+areg avg_initclaims_count afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+areg emp_combined afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+areg emp_combined_inclow afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+areg emp_combined_incmiddle afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+areg emp_combined_inchigh afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
 
 
 
 local depvar  "avg_initclaims_count avg_initclaims_rate emp_combined emp_combined_inclow emp_combined_incmiddle emp_combined_inchigh"
+
+local persic "per_sic1 per_sic2 per_sic3 per_sic4 per_sic5 per_sic6 per_sic7 per_sic8 per_sic9 per_sic10"
+
+
+
+foreach i of local depvar {
+	foreach j of local persic {
+	areg `i' afterstayhome##c.`j' i.month  gps_away_from_home avg_new_death_rate avg_new_case_rate , absorb(county) rob
+	}
+	}
+
 
 
 foreach i of local depvar {
@@ -225,6 +385,17 @@ foreach i of local depvar {
 	areg `i' afterstayhome afterstayhome##high_cyber afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven afterstayhome##c.ln_sum_vpn_pres afterstayhome##c.ln_sum_dbms_pres afterstayhome##c.ln_sum_datawarehouse_sw_pres afterstayhome##c.ln_sum_security_sw_pres afterstayhome##c.sum_AG_M_C afterstayhome##c.sum_EDUC afterstayhome##c.sum_F_I_RE  avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
 	
 	}
+	
+	
+foreach i of local depvar {
+
+	areg `i' afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+	areg `i' afterstayhome##c.ln_security_sw_pres afterstayhome##c.ln_emple afterstayhome##c.ln_reven i.month,  absorb(county) rob
+	areg `i' afterstayhome##c.ln_security_sw_pres##c.ln_it_budget afterstayhome##c.ln_security_sw_pres  afterstayhome##c.ln_it_budget, absorb(county) rob
+
+	
+	}
+
 
 	*2020
 	areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
