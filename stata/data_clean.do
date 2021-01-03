@@ -199,6 +199,59 @@ label variable avg_new_case_rate "New confirmed COVID-19 cases per 100,000 peopl
 label variable avg_new_death_rate "New confirmed COVID-19 deaths per 100,000 people"
 label variable afterstayhome "After Stay-at-Home"
 
+label variable ln_it_budget "IT Budget"
+label variable ln_siteid "Number of Sites"
+label variable ln_emple "Number of Employess"
+label variable ln_reven "Total Revenue"
+label variable ln_salesforce "Number of Salfesforces"
+label variable ln_mobile_workers "Number of Mobile Workers"
+label variable ln_cyber_sum "Total Cybersecurity Investment"
+label variable ln_pcs "Number of PCs"
+label variable ln_hardware_budget "Hardware Budget"
+label variable ln_software_budget "Software Budget"
+label variable ln_services_budget "Services Budget"
+label variable ln_vpn_pres "Number of VPN Presence"
+label variable ln_idaccess_sw_pres "Number of ID Access Software Presence"
+label variable ln_dbms_pres "Number of Database Management Presence"
+label variable ln_datawarehouse_sw_pres "Number of Datawarehouse Presence"
+label variable ln_security_sw_pres "Number of Security Software Presence"
+
+
+
+label variable avg_initclaims_count "Count of initial claims, "
+notes avg_initclaims_count : (regular UI only)
+label variable avg_initclaims_count "Count of unemployment claims"
+label variable avg_initclaims_rate ""
+notes avg_initclaims_rate : Number of initial claims per 100 people in the 2019 labor force
+label variable avg_initclaims_rate "Rate of Unemployment Claimes"
+label variable avg_initclaims_count "Count of Unemployment Claims"
+label variable avg_new_death_rate "New confirmed COVID-19 deaths "
+notes avg_new_death_rate : per 100,000 people
+label variable avg_new_death_rate "New confirmed COVID-19 deaths rate"
+label variable avg_new_case_rate "New confirmed COVID-19 cases "
+notes avg_new_case_rate : per 100,000 people
+label variable avg_new_case_rate "New confirmed COVID-19 cases rate"
+label variable avg_initclaims_count "Count of unemployment claims"
+label variable avg_initclaims_rate "Rate of unemployment claimes"
+label variable gps_retail_and_recreation "GPS retail and recreation"
+label variable gps_grocery_and_pharmacy "GPS grocery and pharmacy"
+label variable gps_parks "GPS parks"
+label variable gps_transit_stations "GPS tramsot stations"
+label variable gps_workplaces "GPS Workplaces"
+label variable gps_residential "GPS residential"
+label variable gps_away_from_home "GPS away from home"
+label variable gps_workplaces "GPS workplaces"
+
+
+g afterhome_ln_it_budget = ln_it_budget* afterstayhome
+g afterhome_ln_security_sw_pres = ln_security_sw_pres * afterstayhome
+g after_itbudget_secupre = afterstayhome * ln_it_budget * ln_security_sw_pres
+
+
+label variable after_itbudget_secupre  "Stay at home * IT Budget *Security software presence"
+label variable afterhome_ln_it_budget "Stay at home * IT budget"
+label variable afterhome_ln_security_sw_pres "Stay at home * Security software presence"
+
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\county_panel.dta"
 
 * Create state panel 
@@ -342,7 +395,6 @@ g high_itbudget = (it_budget> mean_itbudget )
 
 
 **************
-
 areg avg_initclaims_count afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
 areg emp_combined afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
 areg emp_combined_inclow afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
@@ -359,7 +411,7 @@ local persic "per_sic1 per_sic2 per_sic3 per_sic4 per_sic5 per_sic6 per_sic7 per
 
 foreach i of local depvar {
 	foreach j of local persic {
-	areg `i' afterstayhome##c.`j' i.month  gps_away_from_home avg_new_death_rate avg_new_case_rate , absorb(county) rob
+	areg `i' afterstayhome##c.`j' i.month##ln_it_budget  gps_away_from_home avg_new_death_rate avg_new_case_rate , absorb(county) rob
 	}
 	}
 

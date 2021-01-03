@@ -1,9 +1,9 @@
 ﻿% Covid & IT Investment & Unemployment
-% 20201226
+% 20201230
 % Leting Zhang
 
 # Overview
-### This report introduces four main parts: 
+### The report discusses four main parts: 
 + Panel Data
 + Main Variables 
 + Analyses
@@ -15,7 +15,7 @@
 + Panel 2: State, Monthly data - More variables (e.g., Job posting statistics, revenue from small businesses in different sectors), but smaller sample size.
 + Others: We can also use County, Weekly/State, Weekly to get more variations in observations.
 
-# Main variables
+# Main Variables
 
 ## You can see each variable's description and statistics.
 ## State level dataset have more variables. 
@@ -45,7 +45,7 @@
 ### Google Mobility 
 	estpost summarize gps_retail_and_recreation gps_grocery_and_pharmacy gps_parks gps_transit_stations gps_workplaces gps_residential gps_away_from_home
 	
-### COVID Case and Death
+### COVID Cases and Deaths
 	local covid "case_count death_count case_rate death_rate avg_new_case_count avg_new_death_rate avg_new_case_rate "
 	describe `covid'
 	estpost summarize `covid'
@@ -55,10 +55,10 @@
 
 ## CAVEAT: Some results are inconsistent when using different types of dependent variables.
 ## For example, X increases the number of unemployment insurance claims (unemployment rate), but X also increases the employment level.
-## The following results are relatively robust and they are relevant to our topic.
+## The following results are relatively robust and interesting.
 
 ### 1. Only incorporates time-variant controls:
-### The level of mobility - gps_away_from_home is positively associated with employment level.	
+### The level of mobilities - gps_away_from_home is positively associated with employment level.	
 	local depvar  "avg_initclaims_count avg_initclaims_rate  emp_combined emp_combined_inclow emp_combined_incmiddle emp_combined_inchigh"
 	foreach i of local depvar {
 	areg `i' afterstayhom gps_away_from_home avg_new_death_rate avg_new_case_rate  i.month,  absorb(county) rob
@@ -92,9 +92,9 @@
 	
 	
 	
-# Next steps
+# Next Steps
 ## Try synthetic control approaches. 
 ## Further investigate mechanisms. 
 + Share of sites in different sectors: We have the sic variables in the dataset
-+ Share of jobs that can be performed at homes: Reference https://www.nber.org/system/files/working_papers/w26948/w26948.pdf).
++ Share of jobs that can be performed at homes: (Reference https://www.nber.org/system/files/working_papers/w26948/w26948.pdf).
 	
