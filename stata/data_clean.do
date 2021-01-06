@@ -5,6 +5,11 @@
 ********************
 
 
+*********************
+*Packages: genicv: for generating interaction terms 
+*
+*********************
+
 clear
 * Import county data
 import delimited data\output\data_county.csv, varnames(1) 
@@ -144,7 +149,6 @@ label variable no_it_employee0 "(sum) NA"
 label variable sic1 "(sum) AG-M-C"
 label variable sic2 "(sum) EDUC"
 label variable sic3 "(sum) F-I-RE"
-label variable sic4 "(sum) GOVTR"
 label variable sic4 "(sum) GOVT"
 label variable sic5 "(sum) MANUF"
 label variable sic6 "(sum) MED"
@@ -182,9 +186,9 @@ label variable avg_initclaims_count "Count of initial claims, regular UI only"
 label variable avg_initclaims_rate "Number of initial claims per 100 people in the 2019 labor force"
 
 label variable emp_combined "Employment level for all workers"
-label variable emp_combined_inclow "Employment level for low income workers"
-label variable emp_combined_incmiddle "Employment level for middle income workers"
-label variable emp_combined_inchigh "Employment level for high income workers"
+label variable emp_combined_inclow "Employment level - low income"
+label variable emp_combined_incmiddle "Employment level - middle income"
+label variable emp_combined_inchigh "Employment level - high income workers"
 
 label variable spend_all "Spending in all merchant category codes"
 label variable merchants_all "Percent change in number of small businesses open"
@@ -200,7 +204,7 @@ label variable avg_new_death_rate "New confirmed COVID-19 deaths per 100,000 peo
 label variable afterstayhome "After Stay-at-Home"
 
 label variable ln_it_budget "IT Budget"
-label variable ln_siteid "Number of Sites"
+label variable ln_siteid "No. of Sites"
 label variable ln_emple "Number of Employess"
 label variable ln_reven "Total Revenue"
 label variable ln_salesforce "Number of Salfesforces"
@@ -217,20 +221,21 @@ label variable ln_datawarehouse_sw_pres "Number of Datawarehouse Presence"
 label variable ln_security_sw_pres "Number of Security Software Presence"
 
 
-
-label variable avg_initclaims_count "Count of initial claims, "
+label variable avg_initclaims_rate "Rate of unemployment claims"
 notes avg_initclaims_count : (regular UI only)
 label variable avg_initclaims_count "Count of unemployment claims"
 label variable avg_initclaims_rate ""
 notes avg_initclaims_rate : Number of initial claims per 100 people in the 2019 labor force
 label variable avg_initclaims_rate "Rate of Unemployment Claimes"
 label variable avg_initclaims_count "Count of Unemployment Claims"
-label variable avg_new_death_rate "New confirmed COVID-19 deaths "
+
 notes avg_new_death_rate : per 100,000 people
-label variable avg_new_death_rate "New confirmed COVID-19 deaths rate"
-label variable avg_new_case_rate "New confirmed COVID-19 cases "
 notes avg_new_case_rate : per 100,000 people
-label variable avg_new_case_rate "New confirmed COVID-19 cases rate"
+
+label variable avg_new_case_count "New COVID-19 cases"
+label variable avg_new_death_rate "New COVID-19 deaths rate"
+label variable avg_new_case_rate "New COVID-19 cases rate"
+
 label variable avg_initclaims_count "Count of unemployment claims"
 label variable avg_initclaims_rate "Rate of unemployment claimes"
 label variable gps_retail_and_recreation "GPS retail and recreation"
@@ -243,16 +248,63 @@ label variable gps_away_from_home "GPS away from home"
 label variable gps_workplaces "GPS workplaces"
 
 
-g afterhome_ln_it_budget = ln_it_budget* afterstayhome
-g afterhome_ln_security_sw_pres = ln_security_sw_pres * afterstayhome
-g after_itbudget_secupre = afterstayhome * ln_it_budget * ln_security_sw_pres
 
 
-label variable after_itbudget_secupre  "Stay at home * IT Budget *Security software presence"
-label variable afterhome_ln_it_budget "Stay at home * IT budget"
-label variable afterhome_ln_security_sw_pres "Stay at home * Security software presence"
+label variable ln_no_it_employee3 "Number of Sites with 1-4 IT Employees"
+label variable ln_no_it_employee3 "Number of Sites with 10-24 IT Employees"
+label variable ln_no_it_employee6 "Number of Sites with 100-249 IT Employees"
+label variable ln_no_it_employee4 "Number of Sites with 25-49 IT Employees"
+label variable ln_no_it_employee7 "Number of Sites with 250-499 IT Employees"
+label variable ln_no_it_employee2 "Number of Sites with 5-9 IT Employees"
+label variable ln_no_it_employee5 "Number of Sites with 50-99 IT Employees"
+label variable ln_no_it_employee8 "Number of Sites with more than 500 IT Employees"
+label variable ln_no_it_employee0 "NA"
+
+label variable ln_sic1 "Number of Sites in AG-M-C"
+label variable ln_sic2 "Number of Sites in EDUC"
+label variable ln_sic3 "Number of Sites in F-I-RE"
+label variable ln_sic4 "Number of Sites in GOVT"
+label variable ln_sic5 "Number of Sites in MANUF"
+label variable ln_sic6 "Number of Sites in MED"
+label variable ln_sic7 "Number of Sites in NON-CL"
+label variable ln_sic8 "Number of Sites in SVCS"
+label variable ln_sic9 "Number of Sites in TR-UTL"
+label variable ln_sic10 "Number of Sites in WHL-RT"
+
+rename ln_no_it_employee1 ln_no_it_em1
+rename ln_no_it_employee3 ln_no_it_em3
+rename ln_no_it_employee6 ln_no_it_em6
+rename ln_no_it_employee4 ln_no_it_em4
+rename ln_no_it_employee7 ln_no_it_em7
+rename ln_no_it_employee2 ln_no_it_em2
+rename ln_no_it_employee5 ln_no_it_em5
+rename ln_no_it_employee8 ln_no_it_em8
+rename ln_no_it_employee0 ln_no_it_em0
+
+rename ln_hardware_budget ln_hw_budget
+rename ln_software_budget ln_sw_budget
+rename ln_services_budget ln_s_budget
+rename ln_idaccess_sw_pres ln_ida_sw_pres
+rename ln_datawarehouse_sw_pres ln_dw_sw_pres
+
+rename afterstayhome aftersh
+
+
+
+local ci "ln_siteid ln_emple ln_reven ln_salesforce ln_mobile ln_cyber_sum ln_pcs ln_it_budget ln_hw_budget ln_sw_budget ln_s_budget ln_vpn_pres ln_ida_sw_pres ln_dbms_pres ln_dw_sw_pres ln_security_sw_pres ln_no_it_em1 ln_no_it_em3 ln_no_it_em6 ln_no_it_em4 ln_no_it_em7 ln_no_it_em2 ln_no_it_em5 ln_no_it_em8 ln_no_it_em0 ln_sic1 ln_sic2 ln_sic3 ln_sic4 ln_sic5 ln_sic6 ln_sic7 ln_sic8 ln_sic9 ln_sic10"
+
+foreach i of local ci {
+	genicv aftersh `i'
+}
+
+
+
+g after_security_itbudget = aftersh * ln_s_sw_pres * ln_it_budget
+label variable after_security_pres_it_budget "After Stay-at-Home * Security Software Presence * IT Budget"
+
 
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\county_panel.dta"
+
 
 * Create state panel 
 
@@ -301,10 +353,6 @@ label variable spend_aer "Spending in accomodation and food service (ACF)"
 label variable spend_aer "Spending in arts, entertainment, and recreation (AER)"
 label variable spend_all "Spending in all merchant category codes"
 label variable spend_apg "all merchant category codes"
-label variable spend_apg "Spending in"
-label variable spend_grf "Spending in"
-label variable spend_hcs "Spending in"
-label variable spend_tws "Spending in"
 label variable spend_apg "Spending in general merchandise stores (GEN) and apparel and accessories (AAP) MCCs"
 label variable spend_grf "Spending in grocery and food store (GRF) "
 label variable spend_hcs "Spending in  health care and social assistance (HCS) "
@@ -315,11 +363,6 @@ label variable spend_all_incmiddle "spending by consumers living in ZIP codes wi
 
 label variable bg_posts "Average level of job postings"
 notes bg_posts :  relative to January 4-31 2020
-label variable bg_posts_ss30 "Average level of job postings"
-label variable bg_posts_ss55 "Average level of job postings"
-label variable bg_posts_ss60 "Average level of job postings"
-label variable bg_posts_ss65 "Average level of job postings"
-label variable bg_posts_ss70 "Average level of job postings"
 label variable bg_posts_ss30 "Average level of job postings in manufacturing"
 label variable bg_posts_ss55 "Average level of job postings in financial activities "
 label variable bg_posts_ss60 "Average level of job postings in professional and business services "
