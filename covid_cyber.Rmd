@@ -233,19 +233,30 @@ employ_mean_county <- employment_county %>%
   summarise_at(c("emp_combined","emp_combined_inclow", "emp_combined_incmiddle", "emp_combined_inchigh"), mean, na.rm = TRUE)
 
 # CI: site -> county (sum)
-ci_sum <- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES, DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
-  group_by(COUNTY) %>% 
-   summarise(number_sites = n(), 
-         employee = sum(EMPLE),
-         revenue = sum(REVEN),
-         cyber = sum(cyber_sum, na.rm=T),
-         pc = sum(PCS,  na.rm=T),
-         it_budget = sum(IT_BUDGET,  na.rm=T),
-         hard_budget = sum(HARDWARE_BUDGET,  na.rm=T),
-         soft_budget = sum(SOFTWARE_BUDGET, na.rm=T),
-         service_budget = sum(SERVICES_BUDGET, na.rm=T),
-         )
-         
+
+ci_sum_county<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS 
+                                       ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES,
+                                       DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, 
+                                       SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+            group_by(COUNTY) %>% 
+           summarise_at(c('EMPLE', 'REVEN', 'MOBILE_WORKERS','cyber_sum','VPN_PRES','IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES', 'PCS', 'IT_BUDGET', 'HARDWARE_BUDGET', 'SOFTWARE_BUDGET','SERVICES_BUDGET'), sum, na.rm = TRUE)
+
+
+# 
+#    summarise(number_sites = n(), 
+#          employee = sum(EMPLE),
+#          revenue = sum(REVEN),
+#          cyber = sum(cyber_sum, na.rm=T),
+#          pc = sum(PCS,  na.rm=T),
+#          vpn_pres = sum(vpn_pres, na.rm = T),
+#          idaccess_pres = sum()
+#          it_budget = sum(IT_BUDGET,  na.rm=T),
+#          hard_budget = sum(HARDWARE_BUDGET,  na.rm=T),
+#          soft_budget = sum(SOFTWARE_BUDGET, na.rm=T),
+#          service_budget = sum(SERVICES_BUDGET, na.rm=T)
+#          )
+#          
+
 # Econ: county, day -> county, month
 
 econ_mean_county <- econ_county %>% 
@@ -273,7 +284,6 @@ covid_stat_county <-  covid_county %>%
 data_county <- ui_mean_county %>% 
   full_join(employ_mean_county, c('month', 'countyfips') ) %>% 
   full_join(geoid[, c('countyfips', 'statefips', 'stateabbrev')], 'countyfips' ) %>% 
-  full_join(ci_sum, c('countyfips'='COUNTY')) %>% 
   full_join(econ_mean_county, c('month', 'countyfips')) %>% 
   full_join(covid_stat_county, c('month', 'countyfips')) %>% 
   full_join(state_policy, c('statefips')) %>% 
@@ -298,18 +308,24 @@ employ_mean_state <- employment_state %>%
 
 
 # CI: site -> state (sum)
-ci_sum_state <- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES, DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>%
-  group_by(STATE) %>%
-   summarise(number_sites = n(),
-         employee = sum(EMPLE),
-         revenue = sum(REVEN),
-         cyber = sum(cyber_sum, na.rm=T),
-         pc = sum(PCS,  na.rm=T),
-         it_budget = sum(IT_BUDGET,  na.rm=T),
-         hard_budget = sum(HARDWARE_BUDGET,  na.rm=T),
-         soft_budget = sum(SOFTWARE_BUDGET, na.rm=T),
-         service_budget = sum(SERVICES_BUDGET, na.rm=T),
-         )
+
+ci_sum_state<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES, DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(STATE) %>% 
+  summarise_at(c('EMPLE', 'REVEN', 'MOBILE_WORKERS','cyber_sum','VPN_PRES','IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES', 'PCS', 'IT_BUDGET', 'HARDWARE_BUDGET', 'SOFTWARE_BUDGET','SERVICES_BUDGET'), sum, na.rm = TRUE)
+
+
+# ci_sum_state <- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES, DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>%
+#   group_by(STATE) %>%
+#    summarise(number_sites = n(),
+#          employee = sum(EMPLE),
+#          revenue = sum(REVEN),
+#          cyber = sum(cyber_sum, na.rm=T),
+#          pc = sum(PCS,  na.rm=T),
+#          it_budget = sum(IT_BUDGET,  na.rm=T),
+#          hard_budget = sum(HARDWARE_BUDGET,  na.rm=T),
+#          soft_budget = sum(SOFTWARE_BUDGET, na.rm=T),
+#          service_budget = sum(SERVICES_BUDGET, na.rm=T),
+#          )
 
 # Econ: state, day -> state, month
 econ_mean_state <- econ_state%>% 
@@ -341,6 +357,16 @@ data_state <- ui_mean_state %>%
   full_join(employ_mean_state, c('month', 'statefips') ) %>% 
  left_join(geoid[, c('statefips', 'stateabbrev')], 'statefips' ) %>% 
   unique() %>% 
+  full_join(econ_mean_state, c('month', 'statefips')) %>% 
+  full_join(covid_stat_state, c('month', 'statefips')) %>% 
+  full_join(state_policy, c('statefips')) %>% 
+  full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
+
+
+demo <- ui_mean_state %>% 
+  full_join(employ_mean_state, c('month', 'statefips') ) %>% 
+ left_join(geoid[, c('statefips', 'stateabbrev')], 'statefips' ) %>% 
+  unique() %>% 
   full_join(ci_sum_state, c('stateabbrev'='STATE')) %>% 
   full_join(econ_mean_state, c('month', 'statefips')) %>% 
   full_join(covid_stat_state, c('month', 'statefips')) %>% 
@@ -348,8 +374,7 @@ data_state <- ui_mean_state %>%
   full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
 
 
-
-
+rm(demo1)
 ```
 
 ```{r Summary data at county and state level}
@@ -515,6 +540,13 @@ state_level %>%
 
 ```
 
+```{r}
+
+ui_state %>% 
+  group_by(month) %>%
+  summarise (avg_initclaims_county = sum(month, na.rm = T))
+
+```
 
 ```{r Unemployment insurance - Economic Tracker, include=FALSE}
 
