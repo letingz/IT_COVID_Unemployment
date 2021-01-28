@@ -437,6 +437,30 @@ egen mean_itbudget = mean(it_budget)
 g high_itbudget = (it_budget> mean_itbudget )
 
 
+
+
+****************20210114 MSA data & WFH feasibility 
+
+projmanager "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\covidcyber.stpr" 
+import delimited "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\data\geocorr2018 -crosswalk_revised.csv", varnames(1)
+drop if state == "State code"
+keep new_cbsa cbsaname15 county14
+duplicates drop
+destring county14 cbsa, replace
+rename new_cbsa area
+rename county14 county
+destring area, replace
+merge m:1 area using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\msa_teleworkable.dta"
+sort area
+drop _merge
+drop if county ==.
+save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\msa_teleworkable.dta"
+
+
+******************TODO: USE THE NEW REVISED GEOCROSS_FILE
+
+
+
 **************
 areg avg_initclaims_count afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
 areg emp_combined afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
@@ -495,3 +519,8 @@ foreach i of local depvar {
 	*2020
 	areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
 areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
+
+
+**
+areg emp_combined aftersh##c.teleworkable_manual_emp##c.ln_security_sw_pres   gps_away_from_home avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
+ areg emp_combined aftersh##c.gps_away_from_home##c.ln_security_sw_pres avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
