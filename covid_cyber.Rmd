@@ -11,11 +11,15 @@ output: html_document
 library(dplyr, warn.conflicts = FALSE)
 library(tidyverse)
 library(ggplot2)
+library(urbnmapr)
 library(plm)
 library(DT)
 library(R.utils)
 library(data.table)
 library(reshape)
+library(data.table)
+library(tidycensus)
+devtools::install_github("kjhealy/socviz")
 ```
 
 ```{r R Markdown setup, include=FALSE}
@@ -278,6 +282,7 @@ covid_stat_county <-  covid_county %>%
             avg_new_death_rate = mean(new_death_count, na.rm =T),
              
              )
+
 
 # Aggregation
 
@@ -577,7 +582,7 @@ employ_data %>%
 ```
 
 
-
+o
 # Regression Analysis 
 
 ```{r create panel data, include=FALSE }
@@ -934,6 +939,168 @@ shelterdate %>%
   ggplot(aes(x=abb, y= Order.Date)) + 
     geom_point() +
      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+```
+
+
+# QWI data
+
+```{r Read QWI data}
+
+# read each csv - for loop
+qwifiles <- list.files(path = "data/QWI-DATA")
+f <- list()
+col <- c("geo_level", "geography", "industry","ownercode", "sex", "agegrp", "education", "firmage", "firmsize", "year", "quarter", "Emp", "EmpS",
+"EmpTotal", "HirA", "FrmJbGn", "FrmJbLs", "FrmJbC", "EarnS", "Payroll")
+
+for (i in 1:length(qwifiles)) {
+  f[[i]] <- fread(paste("data/QWI-DATA/", qwifiles[i], sep = ""), select = col)
+}
+
+allqwidata <- rbindlist(f)
+
+```
+
+```{r Clean, reshape, and aggregate}
+# extract state level and county level IT employment at 2019 Q4
+
+## industry code
+its_industry = c(5112, 5191, 5182, 5415)
+computer_industry = c(3341, 3342, 3344, 3345, 5179)
+
+
+
+# state_level
+state_qwi_emp <- allqwidata  %>% 
+  filter(geo_level=="S" ) %>% 
+  select ( geography, year, quarter, industry, sex, education, Emp, EmpS,EmpTotal, EarnS, Payroll) 
+  
+## Reshape
+state_qwi_emp_wide <- dcast(setDT(state_qwi_emp), geography+year+quarter+industry ~ paste0("sex", sex) + paste("education", education), value.var = c("EmpS", "EmpTotal","EarnS"), na.rm = TRUE, sep = "", sum)
+
+colnames(state_qwi_emp_wide)  <- gsub(" ","",colnames(state_qwi_emp_wide))
+
+state_qwi_agg <- state_qwi_emp_wide %>% 
+  filter(year == 2019) %>% 
+  group_by(geography, year,quarter) %>% 
+  select(geography, year,quarter, industry, contains("E0")) %>%
+    summarise(
+              # EMPS
+              its_emps_all = sum(EmpSsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_emps_all = sum(EmpSsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
+              com_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+                        
+              all_emps_all = sum(EmpSsex0educationE0,na.rm=T),
+              all_emps_male = sum(EmpSsex1educationE0, na.rm=T),
+              all_emps_female = sum(EmpSsex2educationE0, na.rm=T),
+              
+              # EmpTotal
+              
+              its_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+              all_empstotal_all = sum(EmpTotalsex0educationE0,na.rm=T),
+              all_empstotal_male = sum(EmpTotalsex1educationE0, na.rm=T),
+              all_empstotal_female = sum(EmpTotalsex2educationE0, na.rm=T),
+              
+              # Earn
+              
+              its_earn_all = sum(EarnSsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_earn_male = sum(EarnSsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_earn_female = sum(EarnSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_earn_all = sum(EarnSsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_earn_male = sum(EarnSsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_earn_female = sum(EarnSsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+              all_earn_all = sum(EarnSsex0educationE0,na.rm=T),
+              all_earn_male = sum(EarnSsex1educationE0, na.rm=T),
+              all_earn_female = sum(EarnSsex2educationE0, na.rm=T),
+            
+              ) %>% 
+  ungroup()
+
+
+
+#County level 
+
+county_qwi_emp <- allqwidata  %>% 
+  filter(geo_level=="C" ) %>% 
+  select ( geography, year,quarter, industry, sex, education, EmpS, EmpTotal, EarnS, Payroll)
+## Reshape
+county_qwi_emp_wide<- dcast(setDT(county_qwi_emp), geography+year+quarter+industry ~ paste0("sex", sex) + paste("education", education), value.var = c("EmpS", "EmpTotal", "EarnS"), na.rm = TRUE, sep = "", sum)
+
+colnames(county_qwi_emp_wide)  <- gsub(" ","",colnames(county_qwi_emp_wide))
+
+county_qwi_agg <- county_qwi_emp_wide %>% 
+  filter(year == 2019) %>% 
+  group_by(geography, year,quarter) %>% 
+  select(geography, year,quarter, industry, contains("E0")) %>%
+    summarise(
+              # EMPS
+              its_emps_all = sum(EmpSsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_emps_all = sum(EmpSsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
+              com_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+                        
+              all_emps_all = sum(EmpSsex0educationE0,na.rm=T),
+              all_emps_male = sum(EmpSsex1educationE0, na.rm=T),
+              all_emps_female = sum(EmpSsex2educationE0, na.rm=T),
+              
+              # EmpTotal
+              
+              its_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+              all_empstotal_all = sum(EmpTotalsex0educationE0,na.rm=T),
+              all_empstotal_male = sum(EmpTotalsex1educationE0, na.rm=T),
+              all_empstotal_female = sum(EmpTotalsex2educationE0, na.rm=T),
+              
+              # Earn
+              
+              its_earn_all = sum(EarnSsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_earn_male = sum(EarnSsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_earn_female = sum(EarnSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_earn_all = sum(EarnSsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_earn_male = sum(EarnSsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_earn_female = sum(EarnSsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+              all_earn_all = sum(EarnSsex0educationE0,na.rm=T),
+              all_earn_male = sum(EarnSsex1educationE0, na.rm=T),
+              all_earn_female = sum(EarnSsex2educationE0, na.rm=T),
+            
+              ) %>% 
+  ungroup()
+             
+
+
+
+```
+
+```{r Descriptive analysis}
+state_qwi_agg
+
 
 
 ```
