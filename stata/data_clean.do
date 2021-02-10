@@ -11,161 +11,10 @@
 *********************
 
 clear
-* Import county data
-import delimited data\output\data_county.csv, varnames(1) 
 
-drop v1
-
-rename countyfips county
-
-order statefips stateabbrev state ordermonth orderday, a(county)
-
-destring month countyfips avg_initclaims_count avg_initclaims_rate emp_combined emp_combined_inclow emp_combined_incmiddle emp_combined_inchigh spend_all gps_retail_and_recreation gps_grocery_and_pharmacy gps_parks gps_transit_stations gps_workplaces gps_residential gps_away_from_home merchants_all revenue_all case_count death_count case_rate death_rate avg_new_case_count avg_new_death_rate avg_new_case_rate, replace force
-
-save stata\county_data.dta, replace
-
-* Import state data
-clear
-
-import delimited data\output\data_state.csv, varnames(1) 
-
-drop v1
-
-order stateabbrev state ordermonth orderday, a( statefips )
-
-destring statefips month initclaims_count_regular initclaims_rate_regular contclaims_count_regular contclaims_rate_regular initclaims_count_pua contclaims_count_pua emp_combined emp_combined_inclow emp_combined_incmiddle emp_combined_inchigh emp_combined_ss40 emp_combined_ss60 emp_combined_ss65 emp_combined_ss70 spend_acf spend_aer spend_all spend_apg spend_grf spend_hcs spend_tws spend_all_inchigh spend_all_inclow spend_all_incmiddle spend_retail_w_grocery spend_retail_no_grocery provisional day_endofweek bg_posts bg_posts_ss30 bg_posts_ss55 bg_posts_ss60 bg_posts_ss65 bg_posts_ss70 bg_posts_jz1 bg_posts_jzgrp12 bg_posts_jz2 bg_posts_jz3 bg_posts_jzgrp345 bg_posts_jz4 bg_posts_jz5 gps_retail_and_recreation gps_grocery_and_pharmacy gps_parks gps_transit_stations gps_workplaces gps_residential gps_away_from_home merchants_all merchants_inchigh merchants_inclow merchants_incmiddle merchants_ss40 merchants_ss60 merchants_ss65 merchants_ss70 revenue_all revenue_inchigh revenue_inclow revenue_incmiddle revenue_ss40 revenue_ss60 revenue_ss65 revenue_ss70 test_count test_rate case_count death_count case_rate death_rate avg_new_case_count avg_new_death_rate avg_new_case_rate, replace force
-
-save stata\state_data.dta, replace
-
-clear
-
-* Import CI data
-import delimited data\output\ci_raw.csv
-drop v1
-
-destring county_pop2019 cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres ,replace ignore("NA")
-
-order statename stateabbrev county_pop2019, b( siteid )
-
-tabulate it_staff , generate(no_it_employee)
-tabulate sicgrp , generate(sic) 
-/*
-rename no_it_employee2 no_it_employee12
-rename no_it_employee3 no_it_employee13
-rename no_it_employee6 no_it_employee2
-rename no_it_employee12 no_it_employee3
-rename no_it_employee5 no_it_employee15
-rename no_it_employee7 no_it_employee5
-rename no_it_employee13 no_it_employee6
-rename no_it_employee15 no_it_employee7
-*/
-
-rename no_it_employee9 no_it_employee0
-
-
-
-
-save stata\ci_raw.dta
-
-/*
-* Import EconTrack Data 
-
-import delimited data\output\econ_mean.csv
-drop v1
-destring spend_all gps_retail_and_recreation gps_grocery_and_pharmacy gps_parks gps_transit_stations gps_workplaces gps_residential gps_away_from_home merchants_all revenue_all, replace force
-rename countyfips county
-save stata\econ_panel.dta
-*/
-
-* Create CI county/state level data
-clear
-use stata\ci_raw.dta 
-
-preserve
-
-collapse (count)  siteid (sum)  emple reven salesforce mobile_workers cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres no_it_employee1 no_it_employee3 no_it_employee6 no_it_employee4 no_it_employee7 no_it_employee2 no_it_employee5 no_it_employee8 no_it_employee0 sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10, by(county)
-
-
-
-label variable no_it_employee1 "(sum) if_staff == 1 to 4"
-label variable no_it_employee3 "(sum) 10 to 24"
-label variable no_it_employee6 "(sum) 100 to 249"
-label variable no_it_employee4 "(sum) 25 to 49"
-label variable no_it_employee7 "(sum) 250 to 499"
-label variable no_it_employee2 "(sum) 5 to 9"
-label variable no_it_employee5 "(sum) 50 to 99"
-label variable no_it_employee8 "(sum) 500 to more"
-label variable no_it_employee0 "(sum) NA"
-label variable sic1 "(sum) AG-M-C"
-label variable sic2 "(sum) EDUC"
-label variable sic3 "(sum) F-I-RE"
-label variable sic4 "(sum) GOVTR"
-label variable sic4 "(sum) GOVT"
-label variable sic5 "(sum) MANUF"
-label variable sic6 "(sum) MED"
-label variable sic7 "(sum) NON-CL"
-label variable sic8 "(sum) SVCS"
-label variable sic9 "(sum) TR-UTL"
-label variable sic10 "(sum) WHL-RT"
-
-
-/*
-local site_sum_var "emple reven salesforce mobile_workers cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres no_it_employee1 no_it_employee3 no_it_employee6 no_it_employee4 no_it_employee7 no_it_employee2 no_it_employee5 no_it_employee8 no_it_employee9 sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10"
-
-bys county: egen site_number = count( siteid )
-
-
-foreach i of local site_sum_var {
-	bys county: egen sum_`i' = sum(`i')
-	}
-
-foreach i of local sic {
-	local j = subinstr("`i'", "-", "_", .)
-	bys county: egen sum_`j' = count(siteid/ (sicgrp == "`i'")) 
-}
-
-save "stata\ci_raw_sum_county.dta", replace
-
-keep county statename stateabbrev county_pop2019 sum_emple sum_reven sum_salesforce sum_mobile_workers sum_cyber_sum sum_pcs sum_it_budget sum_hardware_budget sum_software_budget sum_services_budget sum_vpn_pres sum_idaccess_sw_pres sum_dbms_pres sum_datawarehouse_sw_pres sum_security_sw_pres sum_AG_M_C sum_EDUC sum_F_I_RE sum_GOVT sum_MANUF sum_MED sum_NON_CL sum_SVCS sum_TR_UTL sum_WHL_RT
-duplicates drop
-*/
-
-compress
-save "stata\ci_county_data.dta"
-
-restore
-
-collapse (count)  siteid (sum)  emple reven salesforce mobile_workers cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres no_it_employee1 no_it_employee3 no_it_employee6 no_it_employee4 no_it_employee7 no_it_employee2 no_it_employee5 no_it_employee8 no_it_employee0 sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10, by(stateabbrev)
-
-label variable no_it_employee1 "(sum) if_staff == 1 to 4"
-label variable no_it_employee3 "(sum) 10 to 24"
-label variable no_it_employee6 "(sum) 100 to 249"
-label variable no_it_employee4 "(sum) 25 to 49"
-label variable no_it_employee7 "(sum) 250 to 499"
-label variable no_it_employee2 "(sum) 5 to 9"
-label variable no_it_employee5 "(sum) 50 to 99"
-label variable no_it_employee8 "(sum) 500 to more"
-label variable no_it_employee0 "(sum) NA"
-label variable sic1 "(sum) AG-M-C"
-label variable sic2 "(sum) EDUC"
-label variable sic3 "(sum) F-I-RE"
-label variable sic4 "(sum) GOVT"
-label variable sic5 "(sum) MANUF"
-label variable sic6 "(sum) MED"
-label variable sic7 "(sum) NON-CL"
-label variable sic8 "(sum) SVCS"
-label variable sic9 "(sum) TR-UTL"
-label variable sic10 "(sum) WHL-RT"
-
-
-compress
-save "stata\ci_state_data.dta"
-
-stateabbrev
-
-* Create county panel 
+***************** Create county panel ******************
 use stata\county_data.dta
-merge m:1 county using "stata\ci_county_data.dta"
+merge m:1 county using "stata\ci_county_data.dta" /* Merge CI data */
 destring statefips county month ordermonth orderday, replace ignore("NA")
 xtset county month
 xtdescribe
@@ -175,10 +24,19 @@ bys county: replace state = state[_n-1] if state == "NA"
 bys county: replace statefips = statefips[_n-1] if statefips == .
 bys county: replace orderday = orderday[_n-1] if orderday ==.
 
+*merge
+drop _merge
+merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\msa_teleworkable.dta.dta" /* Merge teleworkable data */
+
+drop _merge
+merge m:1 statefips using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\qwi_state.dta" /* Merge state QWI data */
+drop _merge
+merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\qwi_county.dta" /* Merge county QWI data */
+
+* Generate new variable
 generate afterstayhome = (month > ordermonth)
 egen mean_cyber = mean( cyber_sum )
 g high_cyber = ( cyber_sum >mean_cyber )
-
 
 
 * Label data
@@ -286,11 +144,11 @@ rename ln_software_budget ln_sw_budget
 rename ln_services_budget ln_s_budget
 rename ln_idaccess_sw_pres ln_ida_sw_pres
 rename ln_datawarehouse_sw_pres ln_dw_sw_pres
-
 rename afterstayhome aftersh
 
 
 
+*** create interaction terms
 local ci "ln_siteid ln_emple ln_reven ln_salesforce ln_mobile ln_cyber_sum ln_pcs ln_it_budget ln_hw_budget ln_sw_budget ln_s_budget ln_vpn_pres ln_ida_sw_pres ln_dbms_pres ln_dw_sw_pres ln_security_sw_pres ln_no_it_em1 ln_no_it_em3 ln_no_it_em6 ln_no_it_em4 ln_no_it_em7 ln_no_it_em2 ln_no_it_em5 ln_no_it_em8 ln_no_it_em0 ln_sic1 ln_sic2 ln_sic3 ln_sic4 ln_sic5 ln_sic6 ln_sic7 ln_sic8 ln_sic9 ln_sic10"
 
 foreach i of local ci {
@@ -302,6 +160,24 @@ foreach i of local ci {
 g after_security_itbudget = aftersh * ln_s_sw_pres * ln_it_budget
 label variable after_security_pres_it_budget "After Stay-at-Home * Security Software Presence * IT Budget"
 
+
+*** LOG 
+
+local ci " siteid emple reven salesforce mobile_workers cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres no_it_employee1 no_it_employee3 no_it_employee6 no_it_employee4 no_it_employee7 no_it_employee2 no_it_employee5 no_it_employee8 no_it_employee0 sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10 "
+
+foreach i of local ci {
+	g ln_`i' = ln(`i'+1)
+}
+
+local qwi " state_its_emps_all state_its_emps_male state_its_emps_female state_com_emps_all state_com_emps_male state_com_emps_female state_all_emps_all state_all_emps_male state_all_emps_female state_its_empstotal_all state_its_empstotal_male state_its_empstotal_female state_com_empstotal_all state_com_empstotal_male state_com_empstotal_female state_all_empstotal_all state_all_empstotal_male state_all_empstotal_female state_its_earn_all state_its_earn_male state_its_earn_female state_com_earn_all state_com_earn_male state_com_earn_female state_all_earn_all state_all_earn_male state_all_earn_female county_its_emps_all county_its_emps_male county_its_emps_female county_com_emps_all county_com_emps_male county_com_emps_female county_all_emps_all county_all_emps_male county_all_emps_female county_its_empstotal_all county_its_empstotal_male county_its_empstotal_female county_com_empstotal_all county_com_empstotal_male county_com_empstotal_female county_all_empstotal_all county_all_empstotal_male county_all_empstotal_female county_its_earn_all county_its_earn_male county_its_earn_female county_com_earn_all county_com_earn_male county_com_earn_female county_all_earn_all county_all_earn_male county_all_earn_female "
+foreach i of local qwi {
+g ln_`i' = ln(`i'+1)
+}
+
+*** Percentage
+
+g county_its_emps_prop = county_its_emps_all/ county_all_emps_all
+g county_com_emps_prop = county_com_emps_all/ county_all_emps_all
 
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\county_panel.dta"
 
@@ -438,52 +314,35 @@ g high_itbudget = (it_budget> mean_itbudget )
 
 
 
+g county_all_female_prop = county_all_emps_female/county_all_emps_all
 
-****************20210114 MSA data & WFH feasibility 
+g aftersh_ln_county_its_all = aftersh*ln_county_its_emps_all
+g aftersh_ln_county_emp  = aftersh*ln_county_all_emps_all
+g aftersh_ln_county_com_all = aftersh*ln_county_com_emps_all
 
-projmanager "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\covidcyber.stpr" 
-import delimited "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\data\geocorr2018 -crosswalk_revised.csv", varnames(1)
-drop if state == "State code"
-keep new_cbsa cbsaname15 county14
-duplicates drop
-destring county14 cbsa, replace
-rename new_cbsa area
-rename county14 county
-destring area, replace
-merge m:1 area using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\msa_teleworkable.dta"
-sort area
-drop _merge
-drop if county ==.
-save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\msa_teleworkable.dta"
-
-
-******************TODO: USE THE NEW REVISED GEOCROSS_FILE
-
-
-
-**************
-areg avg_initclaims_count afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-areg emp_combined afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-areg emp_combined_inclow afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-areg emp_combined_incmiddle afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-areg emp_combined_inchigh afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-
+label variable aftersh_ln_county_its_all "After Stay-at-Home * Number of IT Services Employees"
+label variable aftersh_ln_county_emp "After Stay-at-Home * Number of Total Employees"
+label variable aftersh_ln_county_com_all "After Stay-at-Home * Number of Computer Employees"
+************** Regression 
 
 
 local depvar  "avg_initclaims_count avg_initclaims_rate emp_combined emp_combined_inclow emp_combined_incmiddle emp_combined_inchigh"
 
-local persic "per_sic1 per_sic2 per_sic3 per_sic4 per_sic5 per_sic6 per_sic7 per_sic8 per_sic9 per_sic10"
-
 
 
 foreach i of local depvar {
-	foreach j of local persic {
-	areg `i' afterstayhome##c.`j' i.month##ln_it_budget  gps_away_from_home avg_new_death_rate avg_new_case_rate , absorb(county) rob
+	
+	areg `i' aftersh##c.ln_county_its_emps_all aftersh##c.ln_county_all_emps_all gps_away_from_home avg_new_death_rate avg_new_case_rate  i.month , absorb(county) rob , absorb(county) rob
+	
 	}
-	}
 
 
+	
+	
+	
 
+
+/*
 foreach i of local depvar {
 
 	areg `i' afterstayhome##c.ln_sum_cyber_sum i.month,  absorb(county) rob
@@ -516,11 +375,64 @@ foreach i of local depvar {
 	}
 
 
-	*2020
+	
+	
+	
+	
 	areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
 areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
 
 
-**
+
 areg emp_combined aftersh##c.teleworkable_manual_emp##c.ln_security_sw_pres   gps_away_from_home avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
  areg emp_combined aftersh##c.gps_away_from_home##c.ln_security_sw_pres avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
+
+ 
+ 
+ 
+ 
+*/
+ 
+ 
+ 
+ /*
+areg avg_initclaims_count afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+areg emp_combined afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+areg emp_combined_inclow afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+areg emp_combined_incmiddle afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+areg emp_combined_inchigh afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
+
+
+*/
+ 
+/*
+* Import EconTrack Data 
+
+import delimited data\output\econ_mean.csv
+drop v1
+destring spend_all gps_retail_and_recreation gps_grocery_and_pharmacy gps_parks gps_transit_stations gps_workplaces gps_residential gps_away_from_home merchants_all revenue_all, replace force
+rename countyfips county
+save stata\econ_panel.dta
+*/
+* Create CI county/state level data
+
+/*
+local site_sum_var "emple reven salesforce mobile_workers cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres no_it_employee1 no_it_employee3 no_it_employee6 no_it_employee4 no_it_employee7 no_it_employee2 no_it_employee5 no_it_employee8 no_it_employee9 sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10"
+
+bys county: egen site_number = count( siteid )
+
+
+foreach i of local site_sum_var {
+	bys county: egen sum_`i' = sum(`i')
+	}
+
+foreach i of local sic {
+	local j = subinstr("`i'", "-", "_", .)
+	bys county: egen sum_`j' = count(siteid/ (sicgrp == "`i'")) 
+}
+
+save "stata\ci_raw_sum_county.dta", replace
+
+keep county statename stateabbrev county_pop2019 sum_emple sum_reven sum_salesforce sum_mobile_workers sum_cyber_sum sum_pcs sum_it_budget sum_hardware_budget sum_software_budget sum_services_budget sum_vpn_pres sum_idaccess_sw_pres sum_dbms_pres sum_datawarehouse_sw_pres sum_security_sw_pres sum_AG_M_C sum_EDUC sum_F_I_RE sum_GOVT sum_MANUF sum_MED sum_NON_CL sum_SVCS sum_TR_UTL sum_WHL_RT
+duplicates drop
+*/

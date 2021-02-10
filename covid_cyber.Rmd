@@ -992,8 +992,8 @@ state_qwi_agg <- state_qwi_emp_wide %>%
               its_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
               
               com_emps_all = sum(EmpSsex0educationE0[industry %in% computer_industry],na.rm=T),
-              com_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
-              com_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+              com_emps_male = sum(EmpSsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_emps_female = sum(EmpSsex2educationE0[industry %in% computer_industry], na.rm=T),
               
                         
               all_emps_all = sum(EmpSsex0educationE0,na.rm=T),
@@ -1054,8 +1054,8 @@ county_qwi_agg <- county_qwi_emp_wide %>%
               its_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
               
               com_emps_all = sum(EmpSsex0educationE0[industry %in% computer_industry],na.rm=T),
-              com_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
-              com_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+              com_emps_male = sum(EmpSsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_emps_female = sum(EmpSsex2educationE0[industry %in% computer_industry], na.rm=T),
               
                         
               all_emps_all = sum(EmpSsex0educationE0,na.rm=T),
@@ -1099,9 +1099,19 @@ county_qwi_agg <- county_qwi_emp_wide %>%
 ```
 
 ```{r Descriptive analysis}
-state_qwi_agg
+str(state_qwi_agg)
 
 
 
 ```
+
+```{r}
+write.csv(county_qwi_agg,"data/output/county_qwi_agg.csv")
+
+write.csv(state_qwi_agg,"data/output/state_qwi_agg.csv")
+
+
+```
+
+
 
