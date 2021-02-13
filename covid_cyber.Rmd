@@ -11,7 +11,6 @@ output: html_document
 library(dplyr, warn.conflicts = FALSE)
 library(tidyverse)
 library(ggplot2)
-library(urbnmapr)
 library(plm)
 library(DT)
 library(R.utils)
@@ -19,7 +18,6 @@ library(data.table)
 library(reshape)
 library(data.table)
 library(tidycensus)
-devtools::install_github("kjhealy/socviz")
 ```
 
 ```{r R Markdown setup, include=FALSE}
@@ -856,35 +854,7 @@ ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN,
 
 ```
 
-## Data visualization
 
-```{r eval=FALSE, include=FALSE}
-obs1 <- cps_data_demo %>% 
-   count(YearMonth, EMPSTAT)
-
-obs1 <- obs1 %>% 
-  group_by(YearMonth) %>% 
-  mutate(total = sum(n))
-
-unemploy_exp <- obs1 %>% 
-  filter(EMPSTAT == 21)
-
-unemploy_new <- obs1 %>% 
-  filter(EMPSTAT == 22)
-unemploy_exp$prop <- unemploy_exp$n/unemploy_exp$total
-unemploy_new$prop <- unemploy_new$n/unemploy_new$total
-
-ggplot(unemploy_exp, aes(x = YearMonth, y =prop, group  = 1)) +
-  geom_line() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-  labs(title = "Experienced workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
-
-ggplot(unemploy_new, aes(x = YearMonth, y =prop, group  = 1)) +
-  geom_line() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-  labs(title = "New workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
-
-```
 
 
 ```{r unemployment, eval=FALSE, include=FALSE}
@@ -1062,7 +1032,7 @@ county_qwi_agg <- county_qwi_emp_wide %>%
               all_emps_male = sum(EmpSsex1educationE0, na.rm=T),
               all_emps_female = sum(EmpSsex2educationE0, na.rm=T),
               
-              # EmpTotal
+# EmpTotal
               
               its_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% its_industry], na.rm=T),
               its_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% its_industry], na.rm=T),
@@ -1099,7 +1069,7 @@ county_qwi_agg <- county_qwi_emp_wide %>%
 ```
 
 ```{r Descriptive analysis}
-str(state_qwi_agg)
+
 
 
 
@@ -1113,5 +1083,138 @@ write.csv(state_qwi_agg,"data/output/state_qwi_agg.csv")
 
 ```
 
+# Data visualization
 
 
+```{r StayAtHomeOrder}
+
+# Map - State-level
+
+library(socviz)
+library(hrbrthemes)
+library(ggrepel)
+
+
+
+theme_map <- function(base_size=9, base_family="") {
+
+      require(grid)
+    theme_bw(base_size=base_size, base_family=base_family) %+replace%
+        theme(axis.line=element_blank(),
+              axis.text=element_blank(),
+              axis.ticks=element_blank(),
+              axis.title=element_blank(),
+              panel.background=element_blank(),
+              panel.border=element_blank(),
+              panel.grid=element_blank(),
+              panel.spacing=unit(0, "lines"),
+              plot.background=element_blank(),
+              legend.justification = c(0,0),
+              legend.position = c(0,0)
+              )
+}
+
+us_states <- map_data("state")
+
+# Stay@home policy
+
+state_home <- state_policy %>% 
+  select(state, statefips, stayathome_start,statewide_stayathome_end  ) %>% 
+   mutate(stayathome = ifelse( (stayathome_start==""), 0 ,1) )
+
+state_home$region <- tolower(state_home$state)
+
+map_state_home <- left_join(us_states, state_home)
+
+
+p <- ggplot(data = map_state_home,
+            aes(x = long, y = lat,
+                group = group, fill = factor(stayathome)) )
+
+p +  scale_fill_manual(values = alpha(c("white", "blue") , 0.6) , labels= c("NO", "YES"))+
+   geom_polygon(color = "gray90", size = 0.1) +
+  coord_map(projection = "albers", lat0 = 39, lat1 =45)  +  
+  theme_map() +guides(fill=guide_legend(title="Stay at Home Order Enforcement"))
+
+
+
+
+
+
+
+```
+```{r}
+
+# IT  employment geographic distribution - county
+head(county_qwi_emp)
+
+```
+
+```{r}
+
+# Unemployment trend 
+
+ui_state_policy <- merge(ui_mean_state, state_home, by = "statefips", all.x = TRUE )
+
+p <- ggplot(data = ui_state_policy ,
+            mapping = aes(x = month, y = initclaims_rate_regular,
+                          group = state, color = factor(stayathome)) )
+
+p1 <- p + geom_line()
+
+
+# p0 <- ggplot(data = ui_state_policy ,
+#              mapping = aes(x = month, y = initclaims_rate_regular, color = factor(stayathome)) )
+
+
+#p1 <- p0 + geom_line(color = "gray70", mapping = aes(group = state))
+
+
+p2 <- p1 + geom_smooth(mapping = aes(group = stayathome), size= 1.5, se = TRUE) + scale_color_manual(values=c("#E69F00", "#56B4E9"))
+
+p3 <- p2 + geom_text_repel(data = subset(ui_state_policy, month == max(month) ), 
+                           mapping = aes(x = month, y = initclaims_rate_regular, label = state),
+                           size = 1.8, segment.color = NA, nudge_x = 30) +
+  coord_cartesian(c(min(ui_state_policy$month),
+                    max(ui_state_policy$month)))
+
+
+p3 + labs(x = "", y = "Unemployment Rate", title = "State-Level Unemployment Rate, 2021")
+
+# +
+#   facet_wrap(~ reorder(stayathome, -initclaims_rate_regular, na.rm = TRUE), nrow = 1)
+
+# 
+
+
+
+```
+
+
+```{r Archive eval=FALSE, include=FALSE}
+obs1 <- cps_data_demo %>% 
+   count(YearMonth, EMPSTAT)
+
+obs1 <- obs1 %>% 
+  group_by(YearMonth) %>% 
+  mutate(total = sum(n))
+
+unemploy_exp <- obs1 %>% 
+  filter(EMPSTAT == 21)
+
+unemploy_new <- obs1 %>% 
+  filter(EMPSTAT == 22)
+unemploy_exp$prop <- unemploy_exp$n/unemploy_exp$total
+unemploy_new$prop <- unemploy_new$n/unemploy_new$total
+
+p <- ggplot(unemploy_exp, aes(x = YearMonth, y =prop, group  = 1)) +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "Experienced workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
+
+ggplot(unemploy_new, aes(x = YearMonth, y =prop, group  = 1)) +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "New workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
+
+```
