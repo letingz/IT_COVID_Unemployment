@@ -182,7 +182,7 @@ g county_com_emps_prop = county_com_emps_all/ county_all_emps_all
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\county_panel.dta"
 
 
-* Create state panel 
+***************** Create state panel ******************
 
 use stata\state_data.dta
 merge m:1 stateabbrev using "stata\ci_state_data.dta"
@@ -198,7 +198,7 @@ save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\state_panel.dta"
 
 * Label data  -State level 
 
-label variable initclaims_count_regular "Count of initial claims, regular UI only"
+{label variable initclaims_count_regular "Count of initial claims, regular UI only"
 notes initclaims_rate_regular : Number of initial claims per 100 people in the 2019 labor force, Regular UI only
 label variable initclaims_rate_regular "Number of initial claims per 100 people in the 2019 labor force"
 label variable contclaims_count_regular "Count of initial claims "
@@ -293,9 +293,13 @@ label variable avg_new_case_count "New confirmed COVID-19 cases"
 label variable avg_new_death_rate "New confirmed COVID-19 deaths"
 label variable avg_new_case_count "New confirmed COVID-19 cases"
 label variable avg_new_case_rate " New confirmed COVID-19 cases per 100,000 people"
+ }
 
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\state_panel.dta"
 
+
+drop _merge
+merge m:1 statefips using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\qwi_state.dta"
 
 local ci " siteid emple reven salesforce mobile_workers cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres no_it_employee1 no_it_employee3 no_it_employee6 no_it_employee4 no_it_employee7 no_it_employee2 no_it_employee5 no_it_employee8 no_it_employee0 sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10 "
 
@@ -311,7 +315,6 @@ foreach i of local sic {
 
 egen mean_itbudget = mean(it_budget)
 g high_itbudget = (it_budget> mean_itbudget )
-
 
 
 g county_all_female_prop = county_all_emps_female/county_all_emps_all
@@ -335,6 +338,10 @@ foreach i of local depvar {
 	areg `i' aftersh##c.ln_county_its_emps_all aftersh##c.ln_county_all_emps_all gps_away_from_home avg_new_death_rate avg_new_case_rate  i.month , absorb(county) rob , absorb(county) rob
 	
 	}
+	
+	
+	
+
 
 
 	
