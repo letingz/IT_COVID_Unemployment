@@ -1317,7 +1317,7 @@ panel_use1 %>%
             its_emp = mean(its_emps_all, na.rm = TRUE),
             all_emp = mean(all_earn_all, na.rm = TRUE),
             its_rate = log(its_emp*100/all_emp+1)) %>% 
-  ggplot(aes(x = month, y = unemp, color = its_rate)) + scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+ geom_point()
+  ggplot(aes(x = month, y = unemp, color = factor(home)) ) + scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+ geom_point(aes(size = its_rate))
 
 ```
 
