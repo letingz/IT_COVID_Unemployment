@@ -134,8 +134,7 @@ econ_county <- Reduce(function(x, y) merge(x, y, all=TRUE), list(affinity_county
                                                                 smallbus_county,smallrev_county ))
 econ_county[, c(8:14)] <- apply(econ_county[, c(8:14)], 2, function(x) as.numeric(x))
 
-econ_state <- Reduce(function(x, y) merge(x, y, all=TRUE), list(affinity_state,jobpost_state_week,
-                                                                gogmobility_state, smallbus_state ,smallrev_state ))
+econ_state <- Reduce(function(x, y) merge(x, y, all=TRUE), list(affinity_state,jobpost_state_week, gogmobility_state, smallbus_state ,smallrev_state ))
 econ_state <- econ_state[, -c(5)]
 econ_state <- econ_state%>% mutate_if(is.character,as.numeric)
 
@@ -202,6 +201,13 @@ cps_data <- read_ipums_micro(cps_ddi_file, data_file = cps_data_file)
 fread(file_path, select = col)
 ```
 
+## Yelp data
+```{r}
+yelp_data <- data
+
+
+```
+
 
 # Data transformation & Descriptive analysis 
 ```{r CI merge, include=FALSE}
@@ -219,6 +225,7 @@ ci_data_use <- merge(ci_data_use, ci_cyber, by = "SITEID",all.x = TRUE)
 ci_data_use <- merge(ci_data_use, ci_presence, by = "SITEID",all.x = TRUE)
 ci_data_use <- merge(ci_data_use, ci_itspend, by = "SITEID",all.x = TRUE)
 ci_data_use <- merge(ci_data_use, ci_enterprise, by = "SITEID",all.x = TRUE)
+
 
 ```
 
@@ -1086,18 +1093,17 @@ write.csv(state_qwi_agg,"data/output/state_qwi_agg.csv")
 # Data visualization
 
 
-```{r StayAtHomeOrder}
+```{r Setting}
 
-# Map - State-level
+# Setting
 
 library(socviz)
 library(hrbrthemes)
 library(ggrepel)
-
+library(psych)
 
 
 theme_map <- function(base_size=9, base_family="") {
-
       require(grid)
     theme_bw(base_size=base_size, base_family=base_family) %+replace%
         theme(axis.line=element_blank(),
@@ -1114,6 +1120,91 @@ theme_map <- function(base_size=9, base_family="") {
               )
 }
 
+# 
+```
+
+```{r descriptive plot}
+plot_missing(panel_use1)
+plot_bar(panel_use1)
+plot_density(panel_use1)
+
+```
+
+```{r}
+
+plot_density(log(panel_use1$all_emps_all))
+
+plot_density(log(panel_use1$com_emps_all))
+
+plot_density(log(panel_use1$its_emps_all))
+
+
+
+# long -tail- Some counties have a very high population working on IT industries (e.g., )
+```
+
+## State-level
+
+### Unemployment/Employment
+```{r}
+
+# Unemployment trend 
+
+ui_state_policy <- merge(ui_mean_state, state_home, by = "statefips", all.x = TRUE )
+
+ ggplot(data = ui_state_policy ,
+            mapping = aes(x = month, y = initclaims_rate_regular,
+                          group = state, color = factor(stayathome)) ) +
+      geom_line() +
+     geom_smooth(mapping = aes(group = stayathome), size= 1.5, se = TRUE) +
+     scale_color_manual(values=c("#E69F00", "#56B4E9")) +
+      geom_text_repel(data = subset(ui_state_policy, month == max(month) ),
+                           mapping = aes(x = month, y = initclaims_rate_regular, label = state),
+                           size = 1.8, segment.color = NA, nudge_x = 30) +
+      coord_cartesian(c(min(ui_state_policy$month), max(ui_state_policy$month))) +  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])
+      labs(x = "", y = "Unemployment Rate", title = "State-Level Unemployment Rate, 2021")
+
+
+
+
+```
+
+
+```{r employment - income}
+
+panel_use1 %>% 
+  group_by(month) %>% 
+  summarise(emp = sum(emp_combined, na.rm = TRUE),
+            high = sum(emp_combined_inchigh, na.rm = TRUE),
+            middle = sum(emp_combined_incmiddle, na.rm = TRUE),
+            low = sum(emp_combined_inclow, na.rm = TRUE)) %>% 
+  ggplot(aes(x = month, y = emp)) +
+  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+  geom_smooth() + geom_line()
+
+# 
+# panel_use1 %>% 
+#   group_by(month, home) %>% 
+#   summarise(emp = sum(emp_combined, na.rm = TRUE)) %>% 
+#   ggplot(aes(x = month, y = emp, color = factor(home))) +
+#   scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x]) +  geom_line()
+
+panel_use1 %>% 
+  group_by(month) %>% 
+  summarise(emp = sum(emp_combined, na.rm = TRUE),
+            high = sum(emp_combined_inchigh, na.rm = TRUE),
+            middle = sum(emp_combined_incmiddle, na.rm = TRUE),
+            low = sum(emp_combined_inclow, na.rm = TRUE)) %>%
+    gather(group, value,emp:low)%>% 
+   filter(month<10) %>% 
+  ggplot(aes(x = month, y = value, color = group)) +
+  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+  geom_line()
+```
+
+### Stay at Home
+```{r StayAtHome}
+
 us_states <- map_data("state")
 
 # Stay@home policy
@@ -1126,69 +1217,186 @@ state_home$region <- tolower(state_home$state)
 
 map_state_home <- left_join(us_states, state_home)
 
-
 p <- ggplot(data = map_state_home,
             aes(x = long, y = lat,
                 group = group, fill = factor(stayathome)) )
 
-p +  scale_fill_manual(values = alpha(c("white", "blue") , 0.6) , labels= c("NO", "YES"))+
+p +  scale_fill_manual(values = c("white", "blue")  , labels=   c("NO", "YES")) +
    geom_polygon(color = "gray90", size = 0.1) +
   coord_map(projection = "albers", lat0 = 39, lat1 =45)  +  
   theme_map() +guides(fill=guide_legend(title="Stay at Home Order Enforcement"))
 
 
+#scale_fill_manual(values = alpha(c("white", "blue"), 0.6), labels=   c("NO", "YES"))
 
 
+```
+
+
+### IT service employment 
+```{r IT service employment }
+state_qwi_agg %>% 
+ select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+  ggplot(mapping = aes(x = ln_its_rate )) + geom_histogram() 
+
+state_qwi_map <- state_qwi_agg %>%  
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  left_join(geoid, by = c( "geography" = "statefips" )) %>% 
+  select(geography, its_emps_all, com_emps_all, all_emps_all, statename) %>%
+  distinct() %>% 
+  mutate(its_rate = its_emps_all*100/all_emps_all+1,
+        ln_its_rate = log(its_emps_all*100/all_emps_all+1),
+        region = tolower(statename)) %>% 
+   right_join(us_states)%>% 
+  select(-c(geography, statename,  order, subregion))
+
+ state_qwi_map %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = its_rate, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_map(projection = "albers", lat0 = 39, lat1 = 45) + scale_fill_gradient(low = "white", high = "#CB454A") +
+    labs(fill = "IT employment rate per") + theme_map() +
+   theme(legend.position = "bottom")
+
+
+
+# state_qwi_agg %>%  
+#   select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+#   left_join(geoid, by = c( "geography" = "statefips" )) %>% 
+#   select(geography, its_emps_all, com_emps_all, all_emps_all, statename) %>%
+#   distinct() %>% 
+#   mutate(its_rate = its_emps_all*100/all_emps_all+1,
+#         ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+#   arrange(desc(its_rate))
+  
+```
+
+
+```{r}
+
+str(state_qwi_agg)
+state_qwi_agg %>% 
+ select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  left_join(geoid, by = c( "geography" = "statefips" )) %>% 
+  distinct(statename,its_emps_all, com_emps_all, all_emps_all) %>% 
+   mutate(its_rate = its_emps_all*100/all_emps_all) %>% 
+  arrange(desc(its_rate)) 
+  
+
+```
+
+
+
+```{r}
+panel_use1 %>% 
+  group_by(month, home) %>% 
+  summarise(emp = 100* mean(emp_combined, na.rm = TRUE),
+            unemp = 100* mean(avg_initclaims_rate, na.rm = TRUE)) %>% 
+  ggplot(mapping =aes(x = month, y = emp, color = factor(home))) +  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+geom_line()
+
+'```
+
+```{r Correlation}
+panel_use1 %>% 
+  group_by(stateabbrev, home) %>% 
+  summarise(emp = 100* mean(emp_combined, na.rm = TRUE),
+            unemp = 100* mean(avg_initclaims_rate, na.rm = TRUE),
+            its_emp = mean(its_emps_all, na.rm = TRUE),
+            all_emp = mean(all_earn_all, na.rm = TRUE),
+            its_rate = log(its_emp*100/all_emp+1)) %>% 
+  ggplot(aes(x = its_rate, y = unemp, color = factor(home))) + geom_point()
+    
+```
+```{r}
+
+panel_use1 %>% 
+  group_by(stateabbrev, home, month) %>% 
+  summarise(emp = 100* mean(emp_combined, na.rm = TRUE),
+            unemp = 100* mean(avg_initclaims_rate, na.rm = TRUE),
+            its_emp = mean(its_emps_all, na.rm = TRUE),
+            all_emp = mean(all_earn_all, na.rm = TRUE),
+            its_rate = log(its_emp*100/all_emp+1)) %>% 
+  ggplot(aes(x = month, y = unemp, color = its_rate)) + scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+ geom_point()
+
+```
+
+
+## County-level 
+
+```{r Panel data}
+panel_use1 <- merge(panel_use1, county_qwi_agg, by.x = "COUNTY", by.y = "geography" )
+panel_use1 <- merge(panel_use1, econ_mean_county, by.x = c("COUNTY", "month"), by.y = c("countyfips","month"))
+
+
+str(panel_use1)
+describe(panel_use1)
+```
+
+```{r}
+
+demo <- county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>%
+  left_join(geoid, by = c("geography" = "countyfips")) %>% 
+  select(-c(cz, statefips, stateabbrev, county_pop2019))
+
+ county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>%
+  gather(group, value,its_emps_all:ln_its_rate)%>% 
+  ggplot(mapping = aes(x = value )) + geom_histogram() + facet_wrap(~group)
+ 
+
+ county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(its_rate = its_emps_all/all_emps_all,
+         ln_its_rate = log(its_rate+1)) %>%
+  arrange(desc(its_rate)) 
+ 
+  
+
+  county_qwi_agg %>% 
+     select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+     mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>%
+     gather(group, value,its_emps_all:ln_its_rate)%>% 
+     filter (group =="all_emps_all")%>%
+     ggplot(mapping = aes(x = home)) + geom_density()
 
 
 
 ```
-```{r}
 
+```{r}
 # IT  employment geographic distribution - county
-head(county_qwi_emp)
 
+
+county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+  right_join(county_map, by = c("geography"  = "county") ) %>% 
+  filter(all_emps_all>100) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = ln_its_rate, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + scale_fill_gradient(low = "white", high = "#CB454A")+
+    labs(fill = "IT employment rate per") + theme_map() +
+ #  guides(fill = guide_legend(nrow = 1)) +
+    theme(legend.position = "bottom")
+
+      
+  
+ 
+county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+  arrange(desc(ln_its_rate))
 ```
 
 ```{r}
 
-# Unemployment trend 
-
-ui_state_policy <- merge(ui_mean_state, state_home, by = "statefips", all.x = TRUE )
-
-p <- ggplot(data = ui_state_policy ,
-            mapping = aes(x = month, y = initclaims_rate_regular,
-                          group = state, color = factor(stayathome)) )
-
-p1 <- p + geom_line()
-
-
-# p0 <- ggplot(data = ui_state_policy ,
-#              mapping = aes(x = month, y = initclaims_rate_regular, color = factor(stayathome)) )
-
-
-#p1 <- p0 + geom_line(color = "gray70", mapping = aes(group = state))
-
-
-p2 <- p1 + geom_smooth(mapping = aes(group = stayathome), size= 1.5, se = TRUE) + scale_color_manual(values=c("#E69F00", "#56B4E9"))
-
-p3 <- p2 + geom_text_repel(data = subset(ui_state_policy, month == max(month) ), 
-                           mapping = aes(x = month, y = initclaims_rate_regular, label = state),
-                           size = 1.8, segment.color = NA, nudge_x = 30) +
-  coord_cartesian(c(min(ui_state_policy$month),
-                    max(ui_state_policy$month)))
-
-
-p3 + labs(x = "", y = "Unemployment Rate", title = "State-Level Unemployment Rate, 2021")
-
-# +
-#   facet_wrap(~ reorder(stayathome, -initclaims_rate_regular, na.rm = TRUE), nrow = 1)
-
-# 
-
-
-
 ```
+
 
 
 ```{r Archive eval=FALSE, include=FALSE}
