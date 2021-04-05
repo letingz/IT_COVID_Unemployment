@@ -7,4 +7,7 @@ data
 *.dta
 *.Rproj
 analysis\output\
-archive
+1.Data
+3.Report
+4.Misc
+5.Archive

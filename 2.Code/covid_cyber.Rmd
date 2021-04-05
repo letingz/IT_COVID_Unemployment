@@ -1,0 +1,1616 @@
+---
+title: "Cybersecurity and Future of Working from Home"
+author: "LetingZhang"
+date: "11/22/2020"
+output: html_document
+---
+
+# Preperation
+
+```{r Load packages, include=FALSE }
+library(dplyr, warn.conflicts = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(plm)
+library(DT)
+library(R.utils)
+library(data.table)
+library(reshape)
+library(data.table)
+library(tidycensus)
+```
+
+```{r R Markdown setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+devtools::install_github('xuyiqing/panelView')
+```
+
+# Data loading
+
+
+## Cybersecurity investment data from CI database----
+```{r CI data, include=FALSE}
+
+ci_path <- readWindowsShortcut("data/CI_USA_2019.lnk")
+
+ci_path <- gsub("\\\\", "/", ci_path$pathname)
+
+ci_cyber <- read.csv("data/CI_cyber_use.csv")
+
+ci_cyber <- subset(ci_cyber, select = c('SITEID','cyber_sum', 'IT_STAFF','PCS'))
+
+path <- paste(ci_path, '/SiteDescription.TXT', sep = '')
+
+col <-  c('SITEID', 'PRIMARY_DUNS_NUMBER', 'COMPANY', 'CITY','STATE','ZIPCODE','COUNTRY' ,'YEAR_EST', 'COUNTY_NAME',    'MSA','EMPLE','REVEN','SALESFORCE','MOBILE_WORKERS','MOBILE_INTL', 'IT_STAFF', 'PC_BUDGET', 'SICGRP', 'SICSUBGROUP')
+ci_site <- fread(path, select = col)
+
+path <- paste(ci_path, '/PresenceInstall.TXT', sep = '')
+
+col <-  c('SITEID', 'VPN_PRES', 'IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES')
+
+ci_presence <- fread(path, select = col)
+ci_presence[ci_presence == "Yes"] <- 1
+ci_presence[ci_presence == ""] <- 0
+ci_presence <- as.data.frame(ci_presence)
+ci_presence[, 2:6] <- sapply(ci_presence[, 2:6], as.numeric )
+
+path <- paste(ci_path, '/ITSpend.TXT', sep = '')
+ci_itspend <- fread(path)
+ci_itspend<- as.data.frame(ci_itspend)
+
+path <- paste(ci_path, '/SiteLevelEnterprise.TXT', sep = '')
+col <-  c('SITEID', 'ENT_ID', 'ENT_COMPANY', 'CORPHDQ', 'ENT_TYPE', 'ENT_EMPLE', 'ENT_REVEN', 'ENT_IT_EMPLE','ENT_SERVER','ENT_STORAGE' , 'ENT_INTERNET_USERS', 'ENT_SERVER_BUDGET', 'ENT_TERMINAL_BUDGET', 'ENT_STORAGE_BUDGET','ENT_COMM_BUDGET', 'ENT_SERVICES_BUDGET')
+ci_enterprise <-  fread(path, select = col)
+
+
+```
+
+```{r load cencus data & geography crosswalk file, include=FALSE}
+#source: census website PS: USE THE NEW ONE 
+#industry_code <- read.csv("cps_monthly_data/2017-census-industry-classification-titles-and-code-list.csv")
+#occupation_code<-read.csv("cps_monthly_data/2018-census-occupation-classification-titles-and-code-list.csv")
+geo_code <- read.csv("data/geocorr2018 -crosswalk.csv")
+
+#source: https://www.huduser.gov/portal/datasets/usps_crosswalk.html
+zip_county <- read.csv("data/ZIP_COUNTY_122019.csv")
+
+#source: https://data.nber.org/cbsa-msa-fips-ssa-county-crosswalk/2019/
+msa_county <- read.csv("data/COUNTY_METRO2019.CSV")
+
+# EconomicTrack
+geoid <- read.csv("data/GeoIDs - County.csv", stringsAsFactors = F)
+
+```
+
+## EconomicTracker data
+
+```{r load EconomicTracker data }
+
+#source: https://github.com/OpportunityInsights/EconomicTracker
+
+## Main DV
+ui_state <- read.csv("data/EconomicTracker-main/data/UI Claims - State - Weekly.csv", stringsAsFactors = F)
+ui_county <- read.csv("data/EconomicTracker-main/data/UI Claims - County - Weekly.csv", stringsAsFactors = F)
+ui_county$initclaims_count_regular<- as.numeric(ui_county$initclaims_count_regular)
+ui_county$initclaims_rate_regular <- as.numeric(ui_county$initclaims_rate_regular)
+
+ui_state <- ui_state%>% mutate_if(is.character,as.numeric)
+
+
+employment_county <- read.csv("data/EconomicTracker-main/data/Employment Combined - County - Daily.csv")
+employment_city <- read.csv("data/EconomicTracker-main/data/Employment Combined - City - Daily.csv")
+employment_state <- read.csv("data/EconomicTracker-main/data/Employment Combined - State - Daily.csv")
+
+
+employment_county[, c(5:8)] <- apply(employment_county[, c(5:8)], 2, function(x) as.numeric(x))
+employment_county <- employment_county%>% mutate_if(is.character,as.numeric)
+employment_state <- employment_state%>% mutate_if(is.character,as.numeric)
+
+employ_data_ori <- employ_data
+employ_data <- employment_county
+employ_data[, c(5:8)] <- apply(employ_data[, c(5:8)], 2, function(x) as.numeric(x))
+
+
+## Other
+affinity_city <- read.csv("data/EconomicTracker-main/data/Affinity - City - Daily.csv")
+affinity_county <- read.csv("data/EconomicTracker-main/data/Affinity - County - Daily.csv")
+affinity_state <- read.csv("data/EconomicTracker-main/data/Affinity - State - Daily.csv")
+  
+jobpost_city_week <- read.csv("data/EconomicTracker-main/data/Burning Glass - City - Weekly.csv")
+jobpost_state_week <- read.csv("data/EconomicTracker-main/data/Burning Glass - state - Weekly.csv")
+
+gogmobility_city <- read.csv("data/EconomicTracker-main/data/Google Mobility - City - Daily.csv")
+gogmobility_county <- read.csv("data/EconomicTracker-main/data/Google Mobility - County - Daily.csv")
+gogmobility_state <- read.csv("data/EconomicTracker-main/data/Google Mobility - State - Daily.csv")
+
+smallbus_city <- read.csv("data/EconomicTracker-main/data/Womply Merchants - City - Daily.csv")
+smallbus_county <- read.csv("data/EconomicTracker-main/data/Womply Merchants - County - Daily.csv")
+smallbus_state <- read.csv("data/EconomicTracker-main/data/Womply Merchants - State - Daily.csv")
+
+smallrev_city <- read.csv("data/EconomicTracker-main/data/Womply Revenue - City - Daily.csv")
+smallrev_county <- read.csv("data/EconomicTracker-main/data/Womply Revenue - County - Daily.csv")
+smallrev_state <- read.csv("data/EconomicTracker-main/data/Womply Revenue - State - Daily.csv")
+
+econ_county <- Reduce(function(x, y) merge(x, y, all=TRUE), list(affinity_county,  gogmobility_county,   
+                                                                smallbus_county,smallrev_county ))
+econ_county[, c(8:14)] <- apply(econ_county[, c(8:14)], 2, function(x) as.numeric(x))
+
+econ_state <- Reduce(function(x, y) merge(x, y, all=TRUE), list(affinity_state,jobpost_state_week, gogmobility_state, smallbus_state ,smallrev_state ))
+econ_state <- econ_state[, -c(5)]
+econ_state <- econ_state%>% mutate_if(is.character,as.numeric)
+
+covid_county <- covid_county%>% mutate_if(is.character,as.numeric)
+
+
+
+```
+
+
+## State stay-at-home order data
+```{r load state policy data and clean (ealier) Shelter-in-plance data, include=FALSE}
+# source: EconomicTracker 
+
+state_policy  <- read.csv("data/Policy Milestones - State.csv", stringsAsFactors = F)
+colnames(state_policy)[1] <- "state"
+#Source: https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
+#Reference: https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
+shelterdate <- read.csv("data/shelter-in-place.csv")
+shelterdate$State <- str_replace_all(shelterdate$State, "[*]", "") #Remove * in state names
+
+
+state_info<-data.frame(abb = state.abb, state = state.name)
+state_info[] <- lapply(state_info, as.character)
+
+state_info[nrow(state_info) + 1,] = c( "DC", "District of Columbia")
+state_info[nrow(state_info) + 1,] = c("PR", "Puerto Rico")
+
+
+shelterdate <- merge(shelterdate,state_info, by.x = "State", by.y = "state", all.x = TRUE )
+shelterdate$Order.Date <- str_replace_all(shelterdate$Order.Date, "/2020", "") #Remove * in state names
+shelterdate$Order.Date1 <- shelterdate$Order.Date
+
+shelterdate <- shelterdate %>% separate("Order.Date1", c("OrderMonth", "OrderDay"))
+
+shelterdate$OrderMonth <- as.integer(shelterdate$OrderMonth)
+shelterdate$OrderDay <- as.integer(shelterdate$OrderDay)
+
+#National Emergency Concerning: March 13 
+#Reference: https://www.whitehouse.gov/presidential-actions/proclamation-declaring-national-emergency-concerning-novel-coronavirus-disease-covid-19-outbreak/
+```
+
+
+## Covid19-data 
+
+```{r load covid19-data, include=FALSE}
+
+covid_county <- read.csv("data/EconomicTracker-main/data/COVID - County - Daily.csv", stringsAsFactors = F)
+covid_state <- read.csv("data/EconomicTracker-main/data/COVID - State - Daily.csv", stringsAsFactors = F)
+covid_county <- covid_county%>% mutate_if(is.character,as.numeric)
+covid_state<- covid_state%>% mutate_if(is.character,as.numeric)
+
+```
+
+## Unemployement data from IPUMS CPS
+```{r load unemployement data ipums CPS,include=FALSE}
+#source: ipums
+library(ipumsr)
+# Change these filepaths to the filepaths of your downloaded extract
+cps_ddi_file <- "data/cps_00003.xml"
+cps_data_file <- "data/cps_00003.dat"
+cps_ddi <- read_ipums_ddi(cps_ddi_file) # Contains metadata, nice to have as separate object
+cps_data <- read_ipums_micro(cps_ddi_file, data_file = cps_data_file)
+fread(file_path, select = col)
+
+rm(cps_data)
+```
+
+## Yelp data
+```{r}
+yelp_data <- data
+
+
+```
+
+
+# Data transformation & Descriptive analysis 
+```{r CI merge, include=FALSE}
+#Geo merge
+ci_data_key <- ci_site[, c("SITEID","ZIPCODE")]
+ci_data_key$ZIPCODE <- substr(ci_site[, c("SITEID","ZIPCODE")]$ZIPCODE,1,5)
+ci_data_key$ZIPCODE <- sub("^0+", "", ci_data_key$ZIPCODE)
+ci_data_key$ZIPCODE <- as.integer(ci_data_key$ZIPCODE)
+
+ci_data_key <- merge(ci_data_key, zip_county_use[, c("ZIP", "COUNTY")], by.x = "ZIPCODE", by.y = "ZIP", all.x = TRUE)
+ci_data_key <- merge(ci_data_key, msa_county_use, by.x = "COUNTY", by.y = "FIPS.County.Code",all.x = TRUE )
+#Merge
+ci_data_use <- merge(ci_site, ci_data_key[, -2], by = "SITEID",all.x = TRUE)
+ci_data_use <- merge(ci_data_use, ci_cyber, by = "SITEID",all.x = TRUE)
+ci_data_use <- merge(ci_data_use, ci_presence, by = "SITEID",all.x = TRUE)
+ci_data_use <- merge(ci_data_use, ci_itspend, by = "SITEID",all.x = TRUE)
+ci_data_use <- merge(ci_data_use, ci_enterprise, by = "SITEID",all.x = TRUE)
+
+
+```
+
+```{r Aggregate data at county level, include=FALSE}
+# Unemployement insurance: county, week -> county, month
+ui_mean_county <- ui_county %>% 
+  group_by(month, countyfips) %>% 
+  summarise (avg_initclaims_count = mean(initclaims_count_regular, na.rm = T),
+             avg_initclaims_rate = mean(initclaims_rate_regular, na.rm = T)  )
+
+# Employment rate: county, day -> county, month
+employ_mean_county <- employment_county %>% 
+  group_by(month, countyfips) %>% 
+  summarise_at(c("emp_combined","emp_combined_inclow", "emp_combined_incmiddle", "emp_combined_inchigh"), mean, na.rm = TRUE)
+
+# CI: site -> county (sum)
+
+ci_sum_county<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS 
+                                       ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES,
+                                       DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, 
+                                       SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+            group_by(COUNTY) %>% 
+           summarise_at(c('EMPLE', 'REVEN', 'MOBILE_WORKERS','cyber_sum','VPN_PRES','IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES', 'PCS', 'IT_BUDGET', 'HARDWARE_BUDGET', 'SOFTWARE_BUDGET','SERVICES_BUDGET'), sum, na.rm = TRUE)
+
+
+# 
+#    summarise(number_sites = n(), 
+#          employee = sum(EMPLE),
+#          revenue = sum(REVEN),
+#          cyber = sum(cyber_sum, na.rm=T),
+#          pc = sum(PCS,  na.rm=T),
+#          vpn_pres = sum(vpn_pres, na.rm = T),
+#          idaccess_pres = sum()
+#          it_budget = sum(IT_BUDGET,  na.rm=T),
+#          hard_budget = sum(HARDWARE_BUDGET,  na.rm=T),
+#          soft_budget = sum(SOFTWARE_BUDGET, na.rm=T),
+#          service_budget = sum(SERVICES_BUDGET, na.rm=T)
+#          )
+#          
+
+# Econ: county, day -> county, month
+
+econ_mean_county <- econ_county %>% 
+  group_by(month, countyfips) %>% 
+  summarise_at(c('spend_all','gps_retail_and_recreation','gps_grocery_and_pharmacy','gps_parks', 'gps_transit_stations',
+                 'gps_workplaces', 'gps_residential', 'gps_away_from_home', 'merchants_all', 'revenue_all'), mean, na.rm = TRUE)
+
+# Covid: county, day -> county,month
+
+covid_stat_county <-  covid_county %>% 
+  group_by(countyfips,month) %>% 
+  summarise(case_count = max(case_count, na.rm = T),
+            death_count = max(death_count, na.rm = T),
+            case_rate = max(case_rate, na.rm = T),
+            death_rate = max(death_rate, na.rm = T),
+            avg_new_case_count = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, nna.rm = T),
+            avg_new_case_rate = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, na.rm =T),
+             
+             )
+
+
+# Aggregation
+
+data_county <- ui_mean_county %>% 
+  full_join(employ_mean_county, c('month', 'countyfips') ) %>% 
+  full_join(geoid[, c('countyfips', 'statefips', 'stateabbrev')], 'countyfips' ) %>% 
+  full_join(econ_mean_county, c('month', 'countyfips')) %>% 
+  full_join(covid_stat_county, c('month', 'countyfips')) %>% 
+  full_join(state_policy, c('statefips')) %>% 
+  full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
+
+
+
+```
+```{r Aggregate data at state level, include=FALSE}
+
+
+# Unemployement insurance: state, week -> state, month
+ui_mean_state <- ui_state %>% 
+  group_by(month,statefips) %>% 
+  summarise_at(c('initclaims_count_regular', 'initclaims_rate_regular', 'contclaims_count_regular', 'contclaims_rate_regular', 'initclaims_count_pua', 'contclaims_count_pua'), mean, na.rm = TRUE)
+
+# Employment rate: county, day -> county, month
+employ_mean_state <- employment_state %>% 
+  group_by(month, statefips) %>% 
+  summarise_at(c("emp_combined","emp_combined_inclow", "emp_combined_incmiddle", "emp_combined_inchigh",  "emp_combined_ss40", "emp_combined_ss60", "emp_combined_ss65", "emp_combined_ss70" ), mean, na.rm = TRUE)
+  
+
+
+# CI: site -> state (sum)
+
+ci_sum_state<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES, DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(STATE) %>% 
+  summarise_at(c('EMPLE', 'REVEN', 'MOBILE_WORKERS','cyber_sum','VPN_PRES','IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES', 'PCS', 'IT_BUDGET', 'HARDWARE_BUDGET', 'SOFTWARE_BUDGET','SERVICES_BUDGET'), sum, na.rm = TRUE)
+
+
+# ci_sum_state <- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES, DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>%
+#   group_by(STATE) %>%
+#    summarise(number_sites = n(),
+#          employee = sum(EMPLE),
+#          revenue = sum(REVEN),
+#          cyber = sum(cyber_sum, na.rm=T),
+#          pc = sum(PCS,  na.rm=T),
+#          it_budget = sum(IT_BUDGET,  na.rm=T),
+#          hard_budget = sum(HARDWARE_BUDGET,  na.rm=T),
+#          soft_budget = sum(SOFTWARE_BUDGET, na.rm=T),
+#          service_budget = sum(SERVICES_BUDGET, na.rm=T),
+#          )
+
+# Econ: state, day -> state, month
+econ_mean_state <- econ_state%>% 
+  group_by(month, statefips) %>% 
+  summarise_at(vars(spend_acf:revenue_ss70), mean, na.rm = TRUE)
+
+
+# Covid: state, day -> state,month
+
+covid_stat_state <-  covid_state %>% 
+  group_by(month, statefips) %>% 
+  summarise(test_count = max(test_count, na.rm = T),
+            test_rate = max(test_rate, na.rm = T),
+            case_count = max(case_count, na.rm = T),
+            death_count = max(death_count, na.rm = T),
+            case_rate = max(case_rate, na.rm = T),
+            death_rate = max(death_rate, na.rm = T),
+            avg_new_case_count = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, nna.rm = T),
+            avg_new_case_rate = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, na.rm =T),
+             
+             )
+
+
+# Aggregation
+
+data_state <- ui_mean_state %>% 
+  full_join(employ_mean_state, c('month', 'statefips') ) %>% 
+ left_join(geoid[, c('statefips', 'stateabbrev')], 'statefips' ) %>% 
+  unique() %>% 
+  full_join(econ_mean_state, c('month', 'statefips')) %>% 
+  full_join(covid_stat_state, c('month', 'statefips')) %>% 
+  full_join(state_policy, c('statefips')) %>% 
+  full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
+
+
+demo <- ui_mean_state %>% 
+  full_join(employ_mean_state, c('month', 'statefips') ) %>% 
+ left_join(geoid[, c('statefips', 'stateabbrev')], 'statefips' ) %>% 
+  unique() %>% 
+  full_join(ci_sum_state, c('stateabbrev'='STATE')) %>% 
+  full_join(econ_mean_state, c('month', 'statefips')) %>% 
+  full_join(covid_stat_state, c('month', 'statefips')) %>% 
+  full_join(state_policy, c('statefips')) %>% 
+  full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
+
+
+rm(demo1)
+```
+
+```{r Summary data at county and state level}
+summary(data_county)
+summary(data_state)
+
+write.csv(data_county, "data/output/data_county.csv")
+write.csv(data_state, "data/output/data_state.csv")
+```
+
+## Descriptive analysis
+
+```{r}
+# State level
+
+long_data_state <- melt(data_state, id=c("month", "newmonth", "statefips", "state", "stateabbrev") ) # convert to long format
+
+###Employment in industries
+long_data_state %>% filter(stateabbrev %in%  c("PA", "NY", "CA", "ND", "IA", "NE") &
+                             variable %in% c("emp_combined_ss40", "emp_combined_ss60",
+                                          "emp_combined_ss65", "emp_combined_ss70")) %>% 
+                mutate_at("value", as.numeric) %>% 
+                ggplot(aes(newmonth, value, colour=variable, group = variable)) +
+    geom_line() + 
+   facet_wrap(~stateabbrev, nrow =2)+
+    theme_bw()
+
+
+  
+```
+```{r}
+### Affinty /Expenditure ###
+long_data_state %>% filter(stateabbrev %in% c("PA", "NY", "CA", "ND", "IA", "NE") &
+                             variable %in% c("spend_all_inchigh", "spend_all_incmiddle", "spend_all_inclow", "spend_all_q2", "spend_all_q3")) %>% 
+                mutate_at("value", as.numeric) %>% 
+                ggplot(aes(newmonth, value, colour=variable, group = variable)) +
+    geom_line() + 
+  facet_wrap(~stateabbrev, nrow =2)+
+    theme_bw()
+
+```
+
+
+
+```{r}
+
+long_data_state %>% filter(stateabbrev %in% c("PA", "NY", "CA", "ND", "IA", "NE") &
+                             variable %in% c("spend_acf", "spend_aer", "spend_all", "spend_apg", "spend_grf", "spend_hcs", "spend_tws")) %>% 
+                mutate_at("value", as.numeric) %>% 
+                ggplot(aes(newmonth, value, colour=variable, group = variable)) +
+    geom_line() + 
+  facet_wrap(~stateabbrev, nrow =2)+
+    theme_bw()
+
+
+```
+
+```{r}
+### Merchants ###
+long_data_state %>% filter(stateabbrev %in% c("PA", "NY", "CA", "ND", "IA", "NE") &
+                             variable %in% c("merchants_all", "merchants_inchigh", "revenue_incmiddle", "revenue_inclow")) %>% 
+                mutate_at("value", as.numeric) %>% 
+                ggplot(aes(newmonth, value, colour=variable, group = variable)) +
+    geom_line() + 
+  facet_wrap(~stateabbrev, nrow =2)+
+    theme_bw()
+
+
+```
+```{r}
+long_data_state %>% filter(stateabbrev %in% c("PA", "NY", "CA", "ND", "IA", "NE") &
+                             variable %in% c("merchants_ss40", "merchants_ss60", "revenue_ss65", "revenue_ss70")) %>% 
+                mutate_at("value", as.numeric) %>% 
+                ggplot(aes(newmonth, value, colour=variable, group = variable)) +
+    geom_line() + 
+  facet_wrap(~stateabbrev, nrow =2)+
+    theme_bw()
+
+```
+
+```{r}
+
+long_data_state %>% filter(stateabbrev %in% c("PA", "NY", "CA", "ND", "IA", "NE") &
+                             variable %in% c("revenue_all", "revenue_inchigh", "revenue_inclow", "revenue_incmiddle")) %>% 
+                mutate_at("value", as.numeric) %>% 
+                ggplot(aes(newmonth, value, colour=variable, group = variable)) +
+    geom_line() + 
+  facet_wrap(~stateabbrev, nrow =2)+
+    theme_bw()
+
+```
+```{r}
+
+long_data_state %>% filter(stateabbrev %in% c("PA", "NY", "CA", "ND", "IA", "NE") &
+                             variable %in% c("revenue_ss40", "revenue_ss60", "revenue_ss65", "revenue_ss70")) %>% 
+                mutate_at("value", as.numeric) %>% 
+                ggplot(aes(newmonth, value, colour=variable, group = variable)) +
+    geom_line() + 
+  facet_wrap(~stateabbrev, nrow =2)+
+    theme_bw()
+```
+
+```{r}
+# Descriptive analysis
+
+
+data_state %>% 
+  filter(stateabbrev == "PA" ) %>% 
+   ggplot(mapping = aes(x = newmonth, group = 1)) +
+  geom_line( aes(y =  emp_combined_ss40), size = 1) + 
+  geom_line( aes(y =  emp_combined_ss60) , color ="#48CAE4"  , linetype="twodash", size = 1) +
+  geom_line( aes(y =  emp_combined_ss65), color = "#0096C7", linetype="twodash", size = 1) +
+  geom_line( aes(y =  emp_combined_ss70), color = "#03045E", linetype="twodash", size = 1) +
+  ggtitle("Relative changes to employment rates" ) +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+
+data_state %>% 
+  filter(stateabbrev == "PA" ) %>% 
+   ggplot(mapping = aes(x = newmonth, group = 1)) +
+  geom_line( aes(y =  emp_combined), size = 1) + 
+  geom_line( aes(y =  emp_combined_inclow) , color ="#48CAE4"  , linetype="twodash", size = 1) +
+  geom_line( aes(y =  emp_combined_incmiddle), color = "#0096C7", linetype="twodash", size = 1) +
+  geom_line( aes(y =  emp_combined_inchigh), color = "#03045E", linetype="twodash", size = 1) +
+  ggtitle("Relative changes to employment rates (High, Middle, All, Low)" ) +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+
+```
+
+## Variations 
+  
+```{r, include=FALSE}
+
+
+ci_county_mean <- ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN, cyber_sum,PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(COUNTY) %>% 
+  summarise_at(c("EMPLE","REVEN", "cyber_sum", "PCS", "IT_BUDGET", "HARDWARE_BUDGET", "SOFTWARE_BUDGET" , "SERVICES_BUDGET"), mean, na.rm = TRUE) %>% 
+  arrange(desc(SOFTWARE_BUDGET))
+
+
+ci_county_median <- ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN, cyber_sum,PCS, IT_BUDGET, HARDWARE_BUDGET,SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(COUNTY) %>% 
+  summarise_at(c("EMPLE","REVEN", "cyber_sum", "PCS", "IT_BUDGET", "HARDWARE_BUDGET", "SOFTWARE_BUDGET" , "SERVICES_BUDGET"), median, na.rm = TRUE) %>% 
+  arrange(desc(cyber_sum))
+
+econ_merge[, 12:18] <- sapply(econ_merge[, 12:18], as.numeric )
+```
+```{r State level}
+
+state_level %>% 
+  group_by(month, stateabbrev) %>% 
+  summarise(avg_unemployment = mean(unemployment_rate)) %>% 
+  ggplot(aes(y = avg_unemployment,x = YearMonth, group = as.factor(stayathome), colour = as.factor(stayathome))) + 
+  geom_line() +
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "Unmployment rate (Average)", x = "Year-Month", y = "Unemployment/Labor force", color = "Stay-at-home-order") +
+  scale_color_hue(labels = c("No", "YES")) +
+  geom_line(size=2)
+
+
+
+```
+
+```{r}
+
+ui_state %>% 
+  group_by(month) %>%
+  summarise (avg_initclaims_county = sum(month, na.rm = T))
+
+```
+
+```{r Unemployment insurance - Economic Tracker, include=FALSE}
+
+ui_data %>% 
+  group_by(month) %>% 
+  summarise (avg_initclaims_county = mean(initclaims_count_regular, na.rm = T),
+             avg_unemploy_rate = mean(initclaims_rate_regular, na.rm = T)  ) %>% 
+  ggplot(mapping = aes(x = as.character(month), y =  avg_unemploy_rate, group = 1)) +
+  geom_line() +
+  ggtitle("Unmployment insurance claim rates ")+
+  theme(plot.title = element_text(hjust = 0.5))
+  
+
+
+employ_data %>% 
+  group_by(month) %>% 
+  summarise_at(c("emp_combined","emp_combined_inclow", "emp_combined_incmiddle", "emp_combined_inchigh"), mean, na.rm = TRUE) %>% 
+  ggplot(mapping = aes(x = as.character(month), group = 1)) +
+  geom_line( aes(y =  emp_combined), size = 1) + 
+  geom_line( aes(y =  emp_combined_inclow) , color ="#48CAE4"  , linetype="twodash", size = 1) +
+  geom_line( aes(y =  emp_combined_incmiddle), color = "#0096C7", linetype="twodash", size = 1) +
+  geom_line( aes(y =  emp_combined_inchigh), color = "#03045E", linetype="twodash", size = 1) +
+  ggtitle("Relative changes to employment rates (All, Lowincome, Middle income, High income)" ) +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+  
+
+```
+
+
+# Regression Analysis 
+
+```{r create panel data, include=FALSE }
+
+
+# create mean panel
+
+## Raw data for STATA 
+
+ci_raw <- merge(ci_data_use, geoid[, c("countyfips","statename", "stateabbrev", "county_pop2019")], by.x = "COUNTY", by.y = "countyfips", all.x = TRUE )
+write.csv(ci_raw, "data/output/ci_raw.csv")
+
+#rm(ci_raw)
+
+county_raw <- merge(employ_mean, ui_county_mean , by = c("countyfips","month"), all = T  )
+county_raw <- merge(county_raw, geoid[, c("countyfips","statename", "stateabbrev")], by = "countyfips", all.x = TRUE )
+county_raw <- merge(county_raw, shelterdate[, c('abb','OrderMonth','OrderDay')], by.x = "stateabbrev", by.y = "abb", all = T)
+county_raw <- merge(county_raw, covid_county, by = c('countyfips','month'), all = T)
+
+write.csv(county_raw, "data/output/county_raw.csv")
+
+
+#econ_mean
+write.csv(econ_mean, "data/output/econ_mean.csv")
+
+mean_panel_x <- merge(ci_county_mean, geoid[, c("countyfips","statename", "stateabbrev", "county_pop2019")],
+                        by.x = "COUNTY", by.y = "countyfips", all.x = TRUE)
+mean_panel_y <- merge(employ_mean, ui_county_mean , by = c("countyfips","month") , all = T  )
+
+
+mean_panel <- merge(mean_panel_x, mean_panel_y, by.x = "COUNTY", by.y = "countyfips", all = TRUE )
+
+mean_panel <- merge(mean_panel, shelterdate[, c('abb','OrderMonth','OrderDay')], by.x = "stateabbrev", by.y = "abb", all = T)
+
+mean_panel <- mean_panel[c(2,13,1,3:12,14:21)] 
+
+
+mean_panel <- merge(mean_panel, covid_county, by.x = c('COUNTY','month'), by.y = c('countyfips','month'), all.x = T)
+
+mean_panel <- mean_panel %>% 
+  mutate(home = ifelse( (month < OrderMonth) | (is.na(OrderMonth)), 0 ,1),
+         mean_cyber = mean(cyber_sum,  na.rm = T),
+         mid_cyber = median(cyber_sum, na.rm = T)) 
+
+mean_panel <- mean_panel %>% 
+  mutate(high_cyber = ifelse(cyber_sum > mean_cyber, 1, 0))
+
+```
+
+```{r}
+# Panel data
+pdim(mean_panel)
+
+# Summary statistics 
+summary(mean_panel)
+
+```
+
+
+# Regression Results
+```{r Regression}
+# fixed effect index
+
+attach(mean_panel)
+
+mean_panel <- mean_panel[order(COUNTY,month),]
+panel_use <- mean_panel[which(!is.na(mean_panel$COUNTY) & !is.na(mean_panel$month) ),]
+panel_use2 <-mean_panel[,c("COUNTY","month", "avg_initclaims_rate","EMPLE", "REVEN", "PCS")]
+write.csv(panel_use, "panel_use.csv")
+
+
+
+```
+
+$$ UIClaimRate_it = \beta_{1} StayAtHome_{it}*HighCybersecurity_{i} + \beta_{2} CovidCase_{it}+ \beta_{3} CovidDeath_{it} + county_{i} $$
+```{r}
+
+# County fixed effect
+reg_fe <- plm(avg_initclaims_rate~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use)
+summary(reg_fe)
+```
+
+$$ UIClaimRate_it = \beta_{1} StayAtHome_{it}*HighCybersecurity_{i} + \beta_{2} CovidCase_{it}+  \beta_{3} CovidDeath_{it} + county_{i} + month_{t} $$
+
+```{r}
+# Two-way fixed effect
+reg_twoway <- plm(avg_initclaims_rate~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+summary(reg_twoway)
+
+```
+
+$$ UIClaimRate_it = \beta_{1} StayAtHome_{it}*Cybersecurity_{i} + \beta_{2} CovidCase_{it}+  \beta_{3} CovidDeath_{it} + county_{i} + month_{t} $$
+```{r}
+# Use cybersecurity investment as moderator
+reg_twoway2 <- plm(avg_initclaims_rate~home*cyber_sum+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+summary(reg_twoway2)
+```
+
+
+$$ EmploymentRate_it = \beta_{1} StayAtHome_{it}*Cybersecurity_{i} + \beta_{2} CovidCase_{it}+  \beta_{3} CovidDeath_{it} + county_{i} + month_{t} $$
+```{r}
+reg_emp <- plm(emp_combined~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+
+summary(reg_emp)
+
+```
+
+$$ LowIncomeEmploymentRate_it = \beta_{1} StayAtHome_{it}*Cybersecurity_{i} + \beta_{2} CovidCase_{it}+  \beta_{3} CovidDeath_{it} + county_{i} + month_{t} $$
+```{r}
+reg_emp_low <- plm(emp_combined_inclow~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+
+summary(reg_emp_low)
+
+
+```
+
+$$ MidIncomeEmploymentRate_it = \beta_{1} StayAtHome_{it}*Cybersecurity_{i} + \beta_{2} CovidCase_{it}+  \beta_{3} CovidDeath_{it} + county_{i} + month_{t} $$
+```{r}
+
+reg_emp_mid <- plm(emp_combined_incmiddle~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+summary(reg_emp_mid)
+
+```
+
+$$ HighIncomeEmploymentRate_it = \beta_{1} StayAtHome_{it}*Cybersecurity_{i} + \beta_{2} CovidCase_{it}+  \beta_{3} CovidDeath_{it} + county_{i} + month_{t} $$
+```{r}
+
+reg_emp_hight <- plm(emp_combined_inchigh~home*high_cyber+avg_case_rate+avg_death_rate, data= panel_use, model = "within", effect = "twoways")
+summary(reg_emp_hight)
+```
+
+
+# Archived
+
+## CPS data
+
+
+```{r CPSarchive Prep, include=FALSE}
+# State level
+cps_data_demo<-cps_data # data backup
+cps_data_demo$YearMonth <- with(cps_data_demo, sprintf("%d-%02d", YEAR, MONTH))
+
+```
+
+
+```{r Employment & geographcy related variables summary, eval=FALSE, include=FALSE, include=FALSE}
+
+ipums_val_labels(cps_ddi, EMPSTAT)
+
+ipums_val_labels(cps_ddi, LABFORCE)
+
+ipums_val_labels(cps_ddi, OCC)#need to refer to documents 
+
+ipums_val_labels(cps_ddi, IND)#need to refer to documents 
+
+table(cps_data_demo$EMPSTAT)
+
+# geo data summary
+
+unique(cps_data_demo$STATEFIP)
+unique(cps_data_demo$METAREA)
+unique(cps_data_demo$COUNTY)
+```
+
+```{r Geography data clean - state, include=FALSE}
+
+#cps-state
+geo_code_state <- geo_code[c("state","stab")]
+geo_code_state <- geo_code_state[!duplicated(geo_code_state$state),]
+geo_code_state$state <- as.numeric(as.character(geo_code_state$state))
+
+cps_data_demo$state_fip <- as.numeric(as.character(cps_data_demo$STATEFIP))
+cps_data_demo <- merge(cps_data_demo, geo_code_state, by.x = "state_fip", by.y = "state", all.x = TRUE)
+cps_data_demo <- merge(cps_data_demo,shelterdate[,c('abb','OrderMonth', 'OrderDay')], by.x = "stab", by.y = "abb", all.x = TRUE)
+
+
+
+#ZIP-county data 
+zip_county_use <- subset(zip_county, TOT_RATIO > 0.5 ) # Caveat
+
+#MSA_County data
+msa_county_use <- msa_county[,c(1,4,6)]
+msa_county_use <- msa_county_use[!duplicated(msa_county_use),]
+
+```
+
+
+```{r Unemployment - CPS analyses, include=FALSE} 
+#county level 
+
+cps_data_demo %>% 
+  filter( YearMonth > "2019-10") %>% 
+  group_by(YearMonth,COUNTY) %>% 
+  summarise(count = n(), 
+         total_workforce = sum(EMPSTAT<30 & EMPSTAT!=0),
+         unemployement = sum(EMPSTAT== 21 | EMPSTAT == 22),
+         unemployment_rate = unemployement/total_workforce)
+
+# Met area level  
+cps_data_demo %>% 
+  filter( YearMonth > "2019-10") %>% 
+  group_by(YearMonth,METAREA) %>% 
+  summarise(count = n(), 
+         total_workforce = sum(EMPSTAT<30 & EMPSTAT!=0),
+         unemployement = sum(EMPSTAT== 21 | EMPSTAT == 22),
+         unemployment_rate = unemployement/total_workforce)
+# State level
+
+cps_data_demo %>% 
+  filter( YearMonth > "2019-10") %>% 
+  group_by(YearMonth,STATEFIP) %>% 
+  summarise(count = n(), 
+         total_workforce = sum(EMPSTAT<30 & EMPSTAT!=0),
+         unemployement = sum(EMPSTAT== 21 | EMPSTAT == 22),
+         unemployment_rate = unemployement/total_workforce)
+
+
+cps_data_demo %>% 
+  select(YearMonth,EMPSTAT,stab,OrderMonth) %>% 
+  filter( YearMonth > "2019-10") %>% 
+  count(YearMonth,EMPSTAT,stab,OrderMonth) %>% 
+  group_by(YearMonth,stab) %>% 
+  mutate(total = sum(n), 
+         total_workforce = sum(n[EMPSTAT<30 & EMPSTAT!=0]),
+         unemployement = sum(n[EMPSTAT== 21 | EMPSTAT == 22]),
+         unemployment_rate = unemployement/total_workforce,
+         stayathome = ifelse(is.na(OrderMonth), 0,1)) 
+
+demo1 <- cps_data_demo %>% 
+  select(YearMonth,EMPSTAT,stab,OrderMonth) %>% 
+  filter( YearMonth > "2019-10") %>% 
+  count(YearMonth,EMPSTAT,stab,OrderMonth) %>% 
+  group_by(YearMonth,stab) %>% 
+  mutate(total = sum(n), 
+         total_workforce = sum(n[EMPSTAT<30 & EMPSTAT!=0]),
+         unemployement = sum(n[EMPSTAT== 21 | EMPSTAT == 22]),
+         unemployment_rate = unemployement/total_workforce,
+         stayathome = ifelse(is.na(OrderMonth), 0,1))
+
+
+```
+## Descriptive analysis
+
+
+```{r CI - mean & median, include=FALSE}
+
+# State: Order by Cybersecurity investment
+ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN, cyber_sum,PCS, IT_BUDGET, HARDWARE_BUDGET,SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(STATE) %>% 
+  summarise_at(c("EMPLE","REVEN", "cyber_sum", "PCS", "IT_BUDGET", "HARDWARE_BUDGET", "SOFTWARE_BUDGET" , "SERVICES_BUDGET"), median, na.rm = TRUE) %>% 
+  arrange(desc(cyber_sum))
+
+# State: Order by Software budget
+ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN, cyber_sum,PCS, IT_BUDGET, HARDWARE_BUDGET,   SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(STATE) %>% 
+  summarise_at(c("EMPLE","REVEN", "cyber_sum", "PCS", "IT_BUDGET", "HARDWARE_BUDGET", "SOFTWARE_BUDGET" , "SERVICES_BUDGET"), mean, na.rm = TRUE) %>% 
+  arrange(desc(SOFTWARE_BUDGET))
+
+
+# County: Order by Cybersecurity investment
+ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN, cyber_sum,PCS, IT_BUDGET, HARDWARE_BUDGET,SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(COUNTY) %>% 
+  summarise_at(c("EMPLE","REVEN", "cyber_sum", "PCS", "IT_BUDGET", "HARDWARE_BUDGET", "SOFTWARE_BUDGET" , "SERVICES_BUDGET"), median, na.rm = TRUE) %>% 
+  arrange(desc(cyber_sum))
+
+# County: Order by Software budget
+ci_data_use %>% select(SITEID, STATE, ZIPCODE.x, COUNTY,CBSA.Name, EMPLE, REVEN, cyber_sum,PCS, IT_BUDGET, HARDWARE_BUDGET,   SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  group_by(COUNTY) %>% 
+  summarise_at(c("EMPLE","REVEN", "cyber_sum", "PCS", "IT_BUDGET", "HARDWARE_BUDGET", "SOFTWARE_BUDGET" , "SERVICES_BUDGET"), mean, na.rm = TRUE) %>% 
+  arrange(desc(SOFTWARE_BUDGET))
+
+```
+
+
+
+
+```{r unemployment, eval=FALSE, include=FALSE}
+
+demo1 %>% 
+  filter( stab %in% c("AL", "CA", "PA","NY","AK","SC","CT","AL", "NJ")) %>% 
+  ggplot(mapping = aes(x = YearMonth, y = unemployment_rate, group  = 1)) +
+  geom_line() + 
+  facet_wrap(~stab, nrow =2)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  geom_vline(xintercept = "2020-04", colour="red") +
+  ggtitle("Unmployment rate (States imposed stay-at-home order) ") + 
+  ylab("Unemployment/Labor force")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+demo1 %>% 
+  filter(stayathome==0 ) %>% 
+  ggplot(mapping = aes(x = YearMonth, y = unemployment_rate, group  = 1)) +
+  geom_line() + 
+  facet_wrap(~stab, nrow =2)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  geom_vline(xintercept = "2020-04", colour="red") +
+  ggtitle("Unmployment rate (No stay-at-home order )") + 
+  ylab("Unemployment/Labor force")+
+   aes(fill = as.factor(stayathome))+
+   theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+```{r}
+
+demo1 %>% 
+  group_by(YearMonth,stayathome) %>% 
+  summarise(avg_unemployment = mean(unemployment_rate)) %>% 
+  ggplot(aes(y = avg_unemployment,x = YearMonth, group = as.factor(stayathome), colour = as.factor(stayathome))) + 
+  geom_line() +
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "Unmployment rate (Average)", x = "Year-Month", y = "Unemployment/Labor force", color = "Stay-at-home-order") +
+  scale_color_hue(labels = c("No", "YES")) +
+  geom_line(size=2)
+
+
+```
+
+
+```{r shelter in place order}
+
+shelterdate %>% 
+  arrange(Order.Date) %>% 
+  mutate(abb=factor(abb, levels = abb)) %>%
+  ggplot(aes(x=abb, y= Order.Date)) + 
+    geom_point() +
+     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+```
+
+
+# QWI data
+
+```{r Read QWI data}
+
+# read each csv - for loop
+qwifiles <- list.files(path = "data/QWI-DATA")
+f <- list()
+col <- c("geo_level", "geography", "industry","ownercode", "sex", "agegrp", "education", "firmage", "firmsize", "year", "quarter", "Emp", "EmpS",
+"EmpTotal", "HirA", "FrmJbGn", "FrmJbLs", "FrmJbC", "EarnS", "Payroll")
+
+for (i in 1:length(qwifiles)) {
+  f[[i]] <- fread(paste("data/QWI-DATA/", qwifiles[i], sep = ""), select = col)
+}
+
+allqwidata <- rbindlist(f)
+rm(allqwidata)
+
+```
+
+```{r Clean, reshape, and aggregate}
+# extract state level and county level IT employment at 2019 Q4
+
+## industry code
+its_industry = c(5112, 5191, 5182, 5415)
+computer_industry = c(3341, 3342, 3344, 3345, 5179)
+
+
+
+# state_level
+state_qwi_emp <- allqwidata  %>% 
+  filter(geo_level=="S" ) %>% 
+  select ( geography, year, quarter, industry, sex, education, Emp, EmpS,EmpTotal, EarnS, Payroll) 
+  
+## Reshape
+state_qwi_emp_wide <- dcast(setDT(state_qwi_emp), geography+year+quarter+industry ~ paste0("sex", sex) + paste("education", education), value.var = c("EmpS", "EmpTotal","EarnS"), na.rm = TRUE, sep = "", sum)
+
+colnames(state_qwi_emp_wide)  <- gsub(" ","",colnames(state_qwi_emp_wide))
+
+state_qwi_agg <- state_qwi_emp_wide %>% 
+  filter(year == 2019) %>% 
+  group_by(geography, year,quarter) %>% 
+  select(geography, year,quarter, industry, contains("E0")) %>%
+    summarise(
+              # EMPS
+              its_emps_all = sum(EmpSsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_emps_all = sum(EmpSsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_emps_male = sum(EmpSsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_emps_female = sum(EmpSsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+                        
+              all_emps_all = sum(EmpSsex0educationE0,na.rm=T),
+              all_emps_male = sum(EmpSsex1educationE0, na.rm=T),
+              all_emps_female = sum(EmpSsex2educationE0, na.rm=T),
+              
+              # EmpTotal
+              
+              its_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+              all_empstotal_all = sum(EmpTotalsex0educationE0,na.rm=T),
+              all_empstotal_male = sum(EmpTotalsex1educationE0, na.rm=T),
+              all_empstotal_female = sum(EmpTotalsex2educationE0, na.rm=T),
+              
+              # Earn
+              
+              its_earn_all = sum(EarnSsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_earn_male = sum(EarnSsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_earn_female = sum(EarnSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_earn_all = sum(EarnSsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_earn_male = sum(EarnSsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_earn_female = sum(EarnSsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+              all_earn_all = sum(EarnSsex0educationE0,na.rm=T),
+              all_earn_male = sum(EarnSsex1educationE0, na.rm=T),
+              all_earn_female = sum(EarnSsex2educationE0, na.rm=T),
+            
+              ) %>% 
+  ungroup()
+
+
+
+#County level 
+
+county_qwi_emp <- allqwidata  %>% 
+  filter(geo_level=="C" ) %>% 
+  select ( geography, year,quarter, industry, sex, education, EmpS, EmpTotal, EarnS, Payroll)
+## Reshape
+county_qwi_emp_wide<- dcast(setDT(county_qwi_emp), geography+year+quarter+industry ~ paste0("sex", sex) + paste("education", education), value.var = c("EmpS", "EmpTotal", "EarnS"), na.rm = TRUE, sep = "", sum)
+
+colnames(county_qwi_emp_wide)  <- gsub(" ","",colnames(county_qwi_emp_wide))
+
+county_qwi_agg <- county_qwi_emp_wide %>% 
+  filter(year == 2019) %>% 
+  group_by(geography, year,quarter) %>% 
+  select(geography, year,quarter, industry, contains("E0")) %>%
+    summarise(
+              # EMPS
+              its_emps_all = sum(EmpSsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_emps_all = sum(EmpSsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_emps_male = sum(EmpSsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_emps_female = sum(EmpSsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+                        
+              all_emps_all = sum(EmpSsex0educationE0,na.rm=T),
+              all_emps_male = sum(EmpSsex1educationE0, na.rm=T),
+              all_emps_female = sum(EmpSsex2educationE0, na.rm=T),
+              
+# EmpTotal
+              
+              its_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+              all_empstotal_all = sum(EmpTotalsex0educationE0,na.rm=T),
+              all_empstotal_male = sum(EmpTotalsex1educationE0, na.rm=T),
+              all_empstotal_female = sum(EmpTotalsex2educationE0, na.rm=T),
+              
+              # Earn
+              
+              its_earn_all = sum(EarnSsex0educationE0[industry %in% its_industry], na.rm=T),
+              its_earn_male = sum(EarnSsex1educationE0[industry %in% its_industry], na.rm=T),
+              its_earn_female = sum(EarnSsex2educationE0[industry %in% its_industry], na.rm=T),
+              
+              com_earn_all = sum(EarnSsex0educationE0[industry %in% computer_industry],na.rm=T),
+              com_earn_male = sum(EarnSsex1educationE0[industry %in% computer_industry], na.rm=T),
+              com_earn_female = sum(EarnSsex2educationE0[industry %in% computer_industry], na.rm=T),
+              
+              all_earn_all = sum(EarnSsex0educationE0,na.rm=T),
+              all_earn_male = sum(EarnSsex1educationE0, na.rm=T),
+              all_earn_female = sum(EarnSsex2educationE0, na.rm=T),
+            
+              ) %>% 
+  ungroup()
+             
+
+
+
+```
+
+```{r Descriptive analysis}
+
+
+
+
+```
+
+```{r}
+write.csv(county_qwi_agg,"data/output/county_qwi_agg.csv")
+
+write.csv(state_qwi_agg,"data/output/state_qwi_agg.csv")
+
+
+```
+
+# Data visualization
+
+## Setting
+```{r Setting}
+
+# Setting
+
+library(socviz)
+library(hrbrthemes)
+library(ggrepel)
+library(psych)
+library(panelView)
+library(haven)
+
+theme_map <- function(base_size=9, base_family="") {
+      require(grid)
+    theme_bw(base_size=base_size, base_family=base_family) %+replace%
+        theme(axis.line=element_blank(),
+              axis.text=element_blank(),
+              axis.ticks=element_blank(),
+              axis.title=element_blank(),
+              panel.background=element_blank(),
+              panel.border=element_blank(),
+              panel.grid=element_blank(),
+              panel.spacing=unit(0, "lines"),
+              plot.background=element_blank(),
+              legend.justification = c(0,0),
+              legend.position = c(0,0)
+              )
+}
+
+# 
+```
+```{r read panel data}
+
+state_panel <- read_dta("state_panel.dta")
+county_panel <- read_dta("county_panelnew.dta")
+```
+
+```{r descriptive plot}
+plot_missing(panel_use1)
+plot_bar(panel_use1)
+plot_density(panel_use1)
+
+```
+
+```{r}
+
+plot_density(log(panel_use1$all_emps_all))
+
+plot_density(log(panel_use1$com_emps_all))
+
+plot_density(log(panel_use1$its_emps_all))
+
+
+
+# long -tail- Some counties have a very high population working on IT industries (e.g., )
+```
+
+## State-level
+
+### Unemployment/Employment
+```{r}
+
+# Unemployment trend 
+
+ui_state_policy <- merge(ui_mean_state, state_home, by = "statefips", all.x = TRUE )
+
+ ggplot(data = ui_state_policy ,
+            mapping = aes(x = month, y = initclaims_rate_regular,
+                          group = state, color = factor(stayathome)) ) +
+      geom_line() +
+      geom_smooth(mapping = aes(group = stayathome), size= 1.5, se = TRUE) +
+      coord_cartesian(c(min(ui_state_policy$month), max(ui_state_policy$month))) +  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+   scale_color_manual(name = "Stay at Home Order Enforcement", labels = c("No", "YES"),values=c( "#264653", "#e76f51"))+
+      labs(x = "", y = "Unemployment Rate", title = "State-level Unemployment Rate - 2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1.35)),
+           legend.position = "top")
+
+
+# #geom_text_repel(data = subset(ui_state_policy, month == max(month) ),
+#                            mapping = aes(x = month, y = initclaims_rate_regular,      label = state),
+#                            size = 1.8, segment.color = NA, nudge_x = 30) +
+
+```
+
+```{r}
+
+
+panel_use1 %>% 
+  group_by(month, stateabbrev) %>% 
+  summarise(emp = sum(emp_combined, na.rm = TRUE),
+            high = sum(emp_combined_inchigh, na.rm = TRUE),
+            middle = sum(emp_combined_incmiddle, na.rm = TRUE),
+            low = sum(emp_combined_inclow, na.rm = TRUE),
+            stayathome = ifelse(is.na(OrderDay), 0,1))  %>% distinct() %>% 
+  ggplot(aes(x = month, y = emp, group = stateabbrev, color = factor(stayathome))) +
+  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+  geom_line() +
+   geom_smooth(aes(group = stayathome), size= 1.5, se = TRUE) + 
+  scale_color_manual(name = "Stay at Home Order Enforcement", labels = c("No", "YES"),values=c( "#264653", "#e76f51"))+
+      labs(x = "", y = "Employment Rate", title = "State-level Employment Rate - 2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1.35)),
+           legend.position = "top")
+
+panel_use1 %>% 
+  group_by(month, stateabbrev) %>% 
+  summarise(emp = sum(emp_combined, na.rm = TRUE),
+            high = sum(emp_combined_inchigh, na.rm = TRUE),
+            middle = sum(emp_combined_incmiddle, na.rm = TRUE),
+            low = sum(emp_combined_inclow, na.rm = TRUE),
+            stayathome = ifelse(is.na(OrderDay), 0,1))  %>% distinct() %>% filter(stayathome == 0 & !is.na(stateabbrev)) %>% 
+  ggplot(aes(x = month, y = emp, group = stateabbrev)) +
+  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+  geom_line() +
+      labs(x = "", y = "Employment Rate", title = "State-level Employment Rate - 2020 \n No Stay at Home Order") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1.35)),
+           legend.position = "top")
+
+```
+
+```{r employment - income}
+
+# panel_use1 %>% 
+#   group_by(month) %>% 
+#   summarise(emp = sum(emp_combined, na.rm = TRUE),
+#             high = sum(emp_combined_inchigh, na.rm = TRUE),
+#             middle = sum(emp_combined_incmiddle, na.rm = TRUE),
+#             low = sum(emp_combined_inclow, na.rm = TRUE)) %>% 
+#   ggplot(aes(x = month, y = emp)) +
+#   scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+#   geom_smooth() + geom_line()
+
+
+panel_use1 %>% 
+  group_by(month) %>% 
+  summarise(emp = sum(emp_combined, na.rm = TRUE),
+            high = sum(emp_combined_inchigh, na.rm = TRUE),
+            middle = sum(emp_combined_incmiddle, na.rm = TRUE),
+            low = sum(emp_combined_inclow, na.rm = TRUE)) %>%
+    gather(group, value,emp:low)%>% 
+   filter(month<10) %>% 
+  ggplot(aes(x = month, y = value, group = group, color = group, linetype = group)) +
+  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+ 
+  scale_linetype_manual(name="Group", values = c("solid","dashed","dashed","dashed" ),labels=c("Total","High Income", "Low Income","Middle Income")) +
+ scale_color_manual( name = "Group", values = c("#081c15", "#00b4d8", "#457b9d", "#1d3557"), labels=c("Total","High Income", "Low Income","Middle Income"))+
+  geom_line(size = 1.2) +
+      labs(x = "", y = "Employment Rate", title = "Employment Rate - 2020 \n Different Income Groups") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1.35)),
+           legend.position = "top")
+  
+```
+
+### Stay at Home
+```{r StayAtHome}
+
+us_states <- map_data("state")
+
+# Stay@home policy
+
+state_home <- state_policy %>% 
+  select(state, statefips, stayathome_start,statewide_stayathome_end  ) %>% 
+   mutate(stayathome = ifelse( (stayathome_start==""), 0 ,1) )
+
+state_home$region <- tolower(state_home$state)
+
+map_state_home <- left_join(us_states, state_home)
+
+p <- ggplot(data = map_state_home,
+            aes(x = long, y = lat,
+                group = group, fill = factor(stayathome)) )
+
+p +  scale_fill_manual(values = c("white", "blue")  , labels=   c("NO", "YES")) +
+   geom_polygon(color = "gray90", size = 0.1) +
+  coord_map(projection = "albers", lat0 = 39, lat1 =45)  +  
+  theme_map() +guides(fill=guide_legend(title="Stay at Home Order Enforcement"))
+
+
+#scale_fill_manual(values = alpha(c("white", "blue"), 0.6), labels=   c("NO", "YES"))
+
+
+```
+
+
+```{r}
+state_policy %>% 
+  select(state, stayathome_start, statewide_stayathome_end) %>% 
+   ggplot(aes(  x = as.Date(stayathome_start), y = reorder(state, as.Date(stayathome_start) ))) + geom_point(size = 2) +  scale_x_date(breaks = seq(as.Date("2020-03-18"), as.Date("2020-04-17"), by="1 days"), date_labels = "%b \n %d") + 
+      labs(x = "", y = "", title = "Stay at Home Start Date \n State") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1.35)),
+       )
+
+
++
+   # geom_pointrange(mapping = aes(ymin = stayathome_start, 
+   #                                 ymax = statewide_stayathome_end)) +      scale_x_date(date_labels = "%b %d")+
+   #  labs( x = "", y = "State") + coord_flip()
+```
+
+
+### IT service employment 
+```{r IT service employment }
+state_qwi_agg %>% 
+ select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+  ggplot(mapping = aes(x = ln_its_rate )) + geom_histogram() 
+
+state_qwi_map <- state_qwi_agg %>%  
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  left_join(geoid, by = c( "geography" = "statefips" )) %>% 
+  select(geography, its_emps_all, com_emps_all, all_emps_all, statename) %>%
+  distinct() %>% 
+  mutate(its_rate = its_emps_all*100/all_emps_all+1,
+        ln_its_rate = log(its_emps_all*100/all_emps_all+1),
+        region = tolower(statename)) %>% 
+   right_join(us_states)%>% 
+  select(-c(geography, statename,  order, subregion))
+
+ state_qwi_map %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = its_rate, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_map(projection = "albers", lat0 = 39, lat1 = 45) + scale_fill_gradient(low = "white", high = "#CB454A") +
+    labs(fill = "IT employment rate per") + theme_map() +
+   theme(legend.position = "bottom")
+
+
+
+# state_qwi_agg %>%  
+#   select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+#   left_join(geoid, by = c( "geography" = "statefips" )) %>% 
+#   select(geography, its_emps_all, com_emps_all, all_emps_all, statename) %>%
+#   distinct() %>% 
+#   mutate(its_rate = its_emps_all*100/all_emps_all+1,
+#         ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+#   arrange(desc(its_rate))
+  
+```
+
+
+```{r}
+
+str(state_qwi_agg)
+state_qwi_agg %>% 
+ select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  left_join(geoid, by = c( "geography" = "statefips" )) %>% 
+  distinct(statename,its_emps_all, com_emps_all, all_emps_all) %>% 
+   mutate(its_rate = its_emps_all*100/all_emps_all) %>% 
+  arrange(desc(its_rate)) 
+  
+
+```
+
+
+
+```{r}
+panel_use1 %>% 
+  group_by(month, home) %>% 
+  summarise(emp = 100* mean(emp_combined, na.rm = TRUE),
+            unemp = 100* mean(avg_initclaims_rate, na.rm = TRUE)) %>% 
+  ggplot(mapping =aes(x = month, y = emp, color = factor(home))) +  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+geom_line()  theme_minimal() +
+    theme(legend.position="top")
+
+
+str(state_panel)
+```
+
+
+## Trends
+```{r}
+ county_panel %>% 
+  select(month, county, aftersh, avg_initclaims_count,avg_initclaims_rate, emp_combined, home, its_emps_high) %>% 
+ group_by(month, home, its_emps_high) %>% 
+  summarise_at(c("avg_initclaims_count","avg_initclaims_rate", "emp_combined"), mean, na.rm = TRUE ) %>% 
+  mutate(state = case_when(home == 0 & its_emps_high == 0 ~ "NoStayHome x LowIT",
+                            home == 0 & its_emps_high == 1 ~ "NoStayHome x HighIT", 
+                            home == 1 & its_emps_high == 0 ~ "StayHome x LowIT", 
+                            home == 1 & its_emps_high == 1 ~ "StayHome x HighIT")) %>% ggplot(aes(x = month, y = avg_initclaims_rate, group = state, color = state))+ scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+  geom_line() +
+      labs(x = "", y = "Unemployment Rate", title = "State-level Unemployment Rate - 2020 \n Treatment vs Control") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1.35)),
+           legend.position = "top")
+
+
+
+# The below one doesn't make much sense. Consider the data generation process, people in high IT area are more likely to use app... and the data are collected from apps. 
+
+ # county_panel %>% 
+ #  select(month, county, aftersh, avg_initclaims_count,avg_initclaims_rate, emp_combined, home, its_emps_high) %>% 
+ # group_by(month, home, its_emps_high) %>% 
+ #  summarise_at(c("avg_initclaims_count","avg_initclaims_rate", "emp_combined"), mean, na.rm = TRUE ) %>% 
+ #  mutate(state = case_when(home == 0 & its_emps_high == 0 ~ "NoStayHome x LowIT",
+ #                            home == 0 & its_emps_high == 1 ~ "NoStayHome x HighIT", 
+ #                            home == 1 & its_emps_high == 0 ~ "StayHome x LowIT", 
+ #                            home == 1 & its_emps_high == 1 ~ "StayHome x HighIT")) %>% ggplot(aes(x = month, y = emp_combined, group = state, color = state))+ geom_line()
+ # 
+
+
+  
+
+
+```
+
+```{r}
+ county_panel %>% 
+  select(month, county, aftersh, avg_initclaims_rate,  home, its_emps_high) %>% 
+ group_by(month, home, its_emps_high) %>% 
+  summarise_at(c("avg_initclaims_rate"), mean, na.rm = TRUE ) %>% 
+   ggplot(aes(x = month, y = avg_initclaims_rate, linetype = factor(home), color = factor(its_emps_high)))+ geom_line(size = 1.3) +   scale_linetype_manual(name="Stay at Home", values = c("dashed", "solid" ),labels=c("No","Yes")) +
+ scale_color_manual( name = "IT Investment", values = c("#f4a261", "#264653"), labels=c("Low","High")) +
+  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+   labs(x = "", y = "Unemployment Rate", title = "State-level Unemployment Rate - 2020 \n Treatment vs Control") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1.35)),
+           legend.position = "top")
+```
+
+
+```{r}
+
+panel_use1 %>% 
+  group_by(stateabbrev, home, month) %>% 
+  summarise(emp = 100* mean(emp_combined, na.rm = TRUE),
+            unemp = 100* mean(avg_initclaims_rate, na.rm = TRUE),
+            its_emp = mean(its_emps_all, na.rm = TRUE),
+            all_emp = mean(all_earn_all, na.rm = TRUE),
+            its_rate = log(its_emp*100/all_emp+1)) %>% 
+  ggplot(aes(x = month, y = unemp, color = factor(home)) ) + scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+ geom_point(aes(size = its_rate))
+
+```
+```{r}
+panel_use1 %>% 
+  group_by(stateabbrev, home, month) %>% 
+  summarise(emp = 100* mean(emp_combined, na.rm = TRUE),
+            unemp = 100* mean(avg_initclaims_rate, na.rm = TRUE),
+            its_emp = mean(its_emps_all, na.rm = TRUE),
+            all_emp = mean(all_earn_all, na.rm = TRUE),
+            its_rate = log(its_emp*100/all_emp+1)) %>% 
+  ggplot(aes(x = month, y = unemp, color = factor(home)) ) + scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+ geom_point(aes(size = its_rate))
+
+```
+```{r}
+x <- LETTERS[1:20]
+y <- paste0("var", seq(1,20))
+data <- expand.grid(X=x, Y=y)
+data$Z <- runif(400, 0, 5)
+
+
+ggplot(data, aes(X, Y, fill= Z)) + 
+  geom_tile()
+```
+
+
+## County-level 
+
+```{r Panel data}
+panel_use1 <- merge(panel_use1, county_qwi_agg, by.x = "COUNTY", by.y = "geography" )
+panel_use1 <- merge(panel_use1, econ_mean_county, by.x = c("COUNTY", "month"), by.y = c("countyfips","month"))
+
+
+str(panel_use1)
+describe(panel_use1)
+```
+
+```{r}
+
+demo <- county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>%
+  left_join(geoid, by = c("geography" = "countyfips")) %>% 
+  select(-c(cz, statefips, stateabbrev, county_pop2019))
+
+ county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>%
+  gather(group, value,its_emps_all:ln_its_rate)%>% 
+  ggplot(mapping = aes(x = value )) + geom_histogram() + facet_wrap(~group)
+ 
+
+ county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(its_rate = its_emps_all/all_emps_all,
+         ln_its_rate = log(its_rate+1)) %>%
+  arrange(desc(its_rate)) 
+ 
+  
+
+  county_qwi_agg %>% 
+     select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+     mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>%
+     gather(group, value,its_emps_all:ln_its_rate)%>% 
+     filter (group =="all_emps_all")%>%
+     ggplot(mapping = aes(x = home)) + geom_density()
+
+
+
+```
+
+```{r}
+# IT  employment geographic distribution - county
+
+
+county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+  right_join(county_map, by = c("geography"  = "county") ) %>% 
+  filter(all_emps_all>100) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = ln_its_rate, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + scale_fill_gradient(low = "white", high = "#CB454A")+
+    labs(fill = "IT employment rate per") + theme_map() +
+ #  guides(fill = guide_legend(nrow = 1)) +
+    theme(legend.position = "bottom")
+
+      
+  
+ 
+county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+  arrange(desc(ln_its_rate))
+```
+
+```{r}
+
+county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+  right_join(county_map, by = c("geography"  = "county") ) %>% 
+  filter(all_emps_all>100) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = ln_its_rate, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + scale_fill_gradient2(low = "red", mid = scales::muted("purple"), high = "blue")+
+    labs(fill = "Log(100*IT Service Employees/All Employees + 1) ") + theme_map() +
+ #  guides(fill = guide_legend(nrow = 1)) +
+    theme(legend.position = "bottom")+  labs(x = "", y = "", title = "IT Employment Rate - 2019 Q4 \n County Level") +  
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1.35)),
+           legend.position = "top")
+```
+
+
+
+```{r Archive eval=FALSE, include=FALSE}
+obs1 <- cps_data_demo %>% 
+   count(YearMonth, EMPSTAT)
+
+obs1 <- obs1 %>% 
+  group_by(YearMonth) %>% 
+  mutate(total = sum(n))
+
+unemploy_exp <- obs1 %>% 
+  filter(EMPSTAT == 21)
+
+unemploy_new <- obs1 %>% 
+  filter(EMPSTAT == 22)
+unemploy_exp$prop <- unemploy_exp$n/unemploy_exp$total
+unemploy_new$prop <- unemploy_new$n/unemploy_new$total
+
+p <- ggplot(unemploy_exp, aes(x = YearMonth, y =prop, group  = 1)) +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "Experienced workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
+
+ggplot(unemploy_new, aes(x = YearMonth, y =prop, group  = 1)) +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "New workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
+
+```
+
+Plotting treatment conditions
+```{r}
+library(panelView)
+library(haven)
+
+```
+```{r}
+panelView( emp_combined ~ aftersh, data = state_panel,by.group = TRUE, treat.type = "discrete",index = c("state","month"), type = "outcome",  xlab = "month", ylab = "state", theme.bw = TRUE)
+
+
+```
+
+```{r}
+panelView(turnout ~ policy_edr + policy_mail_in + policy_motor, data = turnout, treat.type = "continuous",index = c("abb","year"), xlab = "Year", ylab = "State")
+
+```
+
+```{r}
+panelView(turnout ~ policy_edr , data = turnout, treat.type = "continuous",index = c("abb","year"), xlab = "Year", ylab = "State")
+
+```
+
