@@ -105,3 +105,18 @@ p <- sub_dv_char %>%
 
 facet(p, facet.by  = "name", scales = "free") + stat_compare_means(method = "t.test", label.x.npc = "center", vjust = 2)
 
+
+##################### generate county-level characteristics
+
+county_demo <- df_acs1 %>% filter(name %in% c("internetper", "meanincome", "medianhouseholdincome", 
+                          "population", "totalhousehold") ) %>% 
+                          select(-GEOID) %>% 
+                         pivot_wider(
+                          names_from = name , 
+                          values_from = c(estimate)
+                        )
+
+
+write.csv(county_demo, here("1.Data", "2.intermediate_data", "county_demo.csv"))
+  
+       
