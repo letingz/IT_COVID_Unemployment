@@ -4,14 +4,20 @@
 # date: "04/22/2021"
 # input: Raw data
 # output: Panel data
-# status: 
+# status: NEXT: CI Winsorize
    
+
+
+
+
 ####### Preperation ########
   
 library(tidyverse)
 library(here)
 library(data.table)
 library(R.utils)
+library(lubridate)
+library(robustHD)
 
 raw_data_path <- here("1.Data","1.raw_data")
 out_data_path <- here("1.Data","1.output_data")
@@ -295,7 +301,7 @@ ci_itspend <- fread(path)
 ci_itspend<- as.data.frame(ci_itspend)
 
 
-####### Import Census data & Geo crosswalk file #######
+####### Import Geo data & Geo crosswalk file #######
 
 #source: census website PS: USE THE NEW ONE 
 #industry_code <- read.csv("cps_monthly_data/2017-census-industry-classification-titles-and-code-list.csv")
@@ -311,6 +317,15 @@ msa_county <- read.csv(here(raw_data_path, "COUNTY_METRO2019.CSV"))
 # EconomicTrack
 geoid <- read.csv(here(raw_data_path, "GeoIDs - County.csv"), stringsAsFactors = F)
 
+
+
+
+####### Import ACS (American Community Survey) file #######
+
+source("asc_api.R")
+
+
+
 ####### Import CPS data from IPUMS #######
 
 #source: ipums
@@ -318,6 +333,84 @@ library(ipumsr)
 # Change these filepaths to the filepaths of your downloaded extract
 cps_ddi <- read_ipums_ddi(here(raw_data_path,"cps_00003.xml")) # Contains metadata, nice to have as separate object
 cps_data <- read_ipums_micro(cps_ddi, data_file = here(raw_data_path, "cps_00003.dat" ))
+
+
+
+####### Import COVIDcast data from API  #######
+#source: https://cmu-delphi.github.io/delphi-epidata/api/covidcast-signals/safegraph.html
+devtools::install_github("cmu-delphi/covidcast", ref = "main",
+                         subdir = "R-packages/covidcast")
+
+library(covidcast)
+
+
+
+
+
+home_prop_7day <- suppressMessages(
+  covidcast_signal(data_source = "safegraph", signal = "completely_home_prop_7dav",
+                   start_day = "2020-01-01", end_day = "2020-11-10",
+                   geo_type = "county"))
+
+
+
+work_prop_7day <- suppressMessages(
+  covidcast_signal(data_source = "safegraph", signal = "full_time_work_prop_7dav",
+                   start_day = "2020-01-01", end_day = "2020-11-10",
+                   geo_type = "county")
+)
+
+
+
+part_prop_7day <- suppressMessages(
+  covidcast_signal(data_source = "safegraph", signal = "part_time_work_prop_7dav",
+                   start_day = "2020-01-01", end_day = "2020-11-10",
+                   geo_type = "county")
+)
+
+
+
+
+median_home_time_7dav <- suppressMessages(
+  covidcast_signal(data_source = "safegraph", signal = "median_home_dwell_time_7dav",
+                   start_day = "2020-01-01", end_day = "2020-11-10",
+                   geo_type = "county")
+)
+
+
+bar_visit_num <- suppressMessages(
+  covidcast_signal(data_source = "safegraph", signal = "bars_visit_num",
+                   start_day = "2020-01-01", end_day = "2020-11-10",
+                   geo_type = "county")
+)
+
+
+
+
+bars_visit_prop <- suppressMessages(
+  covidcast_signal(data_source = "safegraph", signal = "bars_visit_prop",
+                   start_day = "2020-01-01", end_day = "2020-11-10",
+                   geo_type = "county")
+)
+
+
+
+restaurants_visit_num <- suppressMessages(
+  covidcast_signal(data_source = "safegraph", signal = "restaurants_visit_num",
+                   start_day = "2020-01-01", end_day = "2020-11-10",
+                   geo_type = "county")
+)
+
+
+
+restaurants_visit_prop <- suppressMessages(
+  covidcast_signal(data_source = "safegraph", signal = "restaurants_visit_prop",
+                   start_day = "2020-01-01", end_day = "2020-11-10",
+                   geo_type = "county")
+)
+
+
+
 
 
 
@@ -343,8 +436,129 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
   full_join(ci_itspend) %>% 
   full_join(ci_site)
 
+ci_data_use <- ci_data_use %>% 
 
-############# Aggregate and contruct county-level data #######
+ci_sum_county_winsorize<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS 
+                                                 ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES,
+                                                 DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, 
+                                                 SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  mutate(emple_win = winsorize(EMPLE), 
+         reven_win = winsorize(REVEN), 
+         it_budget_win = winsorize(IT_BUDGET) )
+
+
+
+
+############# Aggregate and contruct county, weekly data #######
+
+# Unemployement insurance:  county, week
+
+ui_county_week <- ui_county %>% 
+  mutate(date = ISOdate(year,month, day_endofweek),
+         week =  week(as.Date(date, "%Y-%m-%d"))) 
+
+
+# Employment rate: county, day -> county, week
+employ_county_week <- employment_county %>% 
+  mutate(date = ISOdate(year,month, day),
+         week =  week(as.Date(date, "%Y-%m-%d")))
+
+
+# Econ: county, day -> county, month
+
+econ_county_week <- econ_county %>% 
+  mutate(date = ISOdate(year,month, day),
+         week =  week(as.Date(date, "%Y-%m-%d")))
+
+
+# Covid: county, day -> county,week
+
+covid_county_week <-  covid_county %>% 
+  mutate(date = ISOdate(year,month, day),
+         week =  week(as.Date(date, "%Y-%m-%d"))) %>% 
+  group_by(countyfips,week,year) %>% 
+  summarise(case_count = max(case_count, na.rm = T),
+            death_count = max(death_count, na.rm = T),
+            case_rate = max(case_rate, na.rm = T),
+            death_rate = max(death_rate, na.rm = T),
+            avg_new_case_count = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, nna.rm = T),
+            avg_new_case_rate = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, na.rm =T),
+            
+  ) %>% ungroup()
+
+
+#Safegraph: county daily - weekly
+
+home_prop_7day_use <- home_prop_7day %>% select(geo_value, time_value, value) %>% 
+  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
+  group_by(week, geo_value) %>% 
+  summarise(avg_home_prop = mean(value, na.rm = TRUE)) %>% ungroup()
+
+
+work_prop_7day_use <- work_prop_7day %>% select(geo_value, time_value, value) %>% 
+  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
+  group_by(week, geo_value) %>% 
+  summarise(avg_work_prop = mean(value, na.rm = TRUE)) %>% ungroup()
+
+part_prop_7day_use <- part_prop_7day %>% select(geo_value, time_value, value) %>% 
+  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
+  group_by(week, geo_value) %>% 
+  summarise(avg_part_prop = mean(value, na.rm = TRUE)) %>% ungroup()
+
+median_home_7day_use <- median_home_time_7dav %>% select(geo_value, time_value, value) %>% 
+  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
+  group_by(week, geo_value) %>% 
+  summarise(avg_median_home = mean(value, na.rm = TRUE)) %>% ungroup()
+
+bar_visit_num_use <- bar_visit_num %>% select(geo_value, time_value, value) %>% 
+  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
+  group_by(week, geo_value) %>% 
+  summarise(avg_bar_visitnum = mean(value, na.rm = TRUE)) %>% ungroup()
+
+
+bar_visit_prop_use <- bars_visit_prop %>% select(geo_value, time_value, value) %>% 
+  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
+  group_by(week, geo_value) %>% 
+  summarise(avg_bar_visitprop = mean(value, na.rm = TRUE)) %>% ungroup()
+
+
+res_visit_num_use <- restaurants_visit_num %>% select(geo_value, time_value, value) %>% 
+  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
+  group_by(week, geo_value) %>% 
+  summarise(avg_res_visitnum = mean(value, na.rm = TRUE)) %>% ungroup()
+
+
+res_visit_prop_use <- restaurants_visit_prop %>% select(geo_value, time_value, value) %>% 
+  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
+  group_by(week, geo_value) %>% 
+  summarise(avg_res_visitprop = mean(value, na.rm = TRUE)) %>% ungroup()
+
+
+safegraph_week <- home_prop_7day_use %>% 
+  full_join(work_prop_7day_use) %>% 
+  full_join(part_prop_7day_use) %>% 
+  full_join(median_home_7day_use) %>% 
+  full_join(bar_visit_num_use) %>% 
+  full_join(bar_visit_prop_use) %>% 
+  full_join(res_visit_num_use) %>% 
+  full_join(res_visit_prop_use)
+
+
+
+
+
+############# Aggregate and contruct state, weekly data #######
+
+# Unemployement insurance: state, week -> county, month
+
+
+
+
+
+
+############# Aggregate and contruct county, monthly data #######
 
 # Unemployement insurance: county, week -> county, month
 ui_mean_county <- ui_county %>% 
@@ -360,13 +574,12 @@ employ_mean_county <- employment_county %>%
 
 # CI: site -> county (sum)
 
-ci_sum_county<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS 
+ci_sum_county<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS, IT_STAFF 
                                        ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES,
                                        DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, 
                                        SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
   group_by(COUNTY) %>% 
   summarise_at(c('EMPLE', 'REVEN', 'MOBILE_WORKERS','cyber_sum','VPN_PRES','IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES', 'PCS', 'IT_BUDGET', 'HARDWARE_BUDGET', 'SOFTWARE_BUDGET','SERVICES_BUDGET'), sum, na.rm = TRUE) %>% ungroup()
-
 
 
 # Econ: county, day -> county, month
@@ -401,7 +614,7 @@ data_county <- ui_mean_county %>%
   full_join(state_policy, c('statefips')) %>% 
   full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
 
-############# Aggregate and contruct state-level data #######
+############# Aggregate and contruct state, monthly data #######
 
 
 # Unemployement insurance: state, week -> state, month
@@ -464,3 +677,5 @@ summary(data_state)
 
 write.csv(data_county, here(out_data_path,"data_county.csv") )
 write.csv(data_state, here( out_data_path, "data_state.csv") )
+
+
