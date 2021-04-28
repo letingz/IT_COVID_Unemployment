@@ -18,9 +18,10 @@ library(data.table)
 library(R.utils)
 library(lubridate)
 library(robustHD)
+library(haven)
 
 raw_data_path <- here("1.Data","1.raw_data")
-out_data_path <- here("1.Data","1.output_data")
+out_data_path <- here("1.Data","3.output_data")
 
 ############# IMPORT & CLEAN ###############
 
@@ -69,9 +70,14 @@ econ_county[, 8:14] <- sapply(econ_county[, 8:14], as.numeric )
 econ_state <- Reduce(function(x, y) merge(x, y, all=TRUE), list(affinity_state,jobpost_state_week, gogmobility_state, smallbus_state ,smallrev_state ))
 econ_state <- econ_state%>% mutate_if(is.character,as.numeric)
 
-####### Import States  Stay at Home - EconomicTracker ########
+####### Import State/County Stay at Home - EconomicTracker ########
 
 # source:  https://github.com/OpportunityInsights/EconomicTracker
+#National Emergency Concerning: March 13 
+#Reference: https://www.whitehouse.gov/presidential-actions/proclamation-declaring-national-emergency-concerning-novel-coronavirus-disease-covid-19-outbreak/
+#Other Source: https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
+#Reference: https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
+
 
 state_policy  <- read.csv(here(raw_data_path,"EconomicTracker-main/data/Policy Milestones - State.csv"), stringsAsFactors = F)
 colnames(state_policy)[1] <- "state"
@@ -96,19 +102,27 @@ shelterdate <- shelterdate %>% separate("Order.Date1", c("OrderMonth", "OrderDay
 shelterdate$OrderMonth <- as.integer(shelterdate$OrderMonth)
 shelterdate$OrderDay <- as.integer(shelterdate$OrderDay)
 
-#National Emergency Concerning: March 13 
-#Reference: https://www.whitehouse.gov/presidential-actions/proclamation-declaring-national-emergency-concerning-novel-coronavirus-disease-covid-19-outbreak/
-#Other Source: https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
-#Reference: https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
-
-
-######## Import County Stay at Home - Other source ########
+######## Import County Stay at Home 
 
 #source: https://github.com/JieYingWu/COVID-19_US_County-level_Summaries
 #After converting date format in python 
 
 county_policy <- read.csv(here( "1.Data", "2.intermediate_data", "county_shutdown.csv"))
 
+county_policy <- county_policy %>% filter(FIPS != 0) %>% 
+              mutate(year = 2020, 
+                     countypolicy_date = ISOdate(year,stay_at_home_month, stay_at_home_day),
+                     countypolicy_week = week(as.Date(countypolicy_date, "%Y-%m-%d"))  ) %>% select( -c(X, year, stay_at_home_month, stay_at_home_day))
+
+policy_state_county <- shelterdate %>% select(abb, OrderMonth, OrderDay) %>% 
+                          mutate(year = 2020, 
+                                 statepolicy_date = ISOdate(year,OrderMonth, OrderDay),
+                                 statepolicy_week = week(as.Date(statepolicy_date, "%Y-%m-%d")) ) %>% select(-c(year,year,OrderMonth, OrderDay)) %>% 
+                          full_join(county_policy, by = c("abb" = "STATE"))
+
+policy_state_county <- policy_state_county %>% select(abb, FIPS, statepolicy_week, countypolicy_week, 
+                                                      statepolicy_date, countypolicy_date)
+                  
 
 ######## Import Covid19 from Eonomic Tracker ########
 
@@ -472,7 +486,7 @@ ci_percap_county <-  ci_sum_county_pre %>%
   rename_with( .cols = 2:20, .fn = ~ paste0(.x, "_percap") )
 
 
-ci_county_all <- ci_mean_county %>% full_join(ci_percap_county)
+ci_county_all <- ci_mean_county %>% full_join(ci_percap_county) %>% 
 
 
 ############# Aggregate and contruct county, weekly data #######
@@ -481,20 +495,35 @@ ci_county_all <- ci_mean_county %>% full_join(ci_percap_county)
 
 ui_county_week <- ui_county %>% 
   mutate(date = ISOdate(year,month, day_endofweek),
-         week =  week(as.Date(date, "%Y-%m-%d"))) 
+         week =  week(as.Date(date, "%Y-%m-%d"))) %>% 
+  select(-c(year, month, day_endofweek, date))
 
+
+
+demo <- ui_county %>% 
+  mutate(date = ISOdate(year,month, day_endofweek),
+         week =  week(as.Date(date, "%Y-%m-%d"))) 
 
 # Employment rate: county, day -> county, week
 employ_county_week <- employment_county %>% 
   mutate(date = ISOdate(year,month, day),
-         week =  week(as.Date(date, "%Y-%m-%d")))
+         week =  week(as.Date(date, "%Y-%m-%d"))) %>% 
+  select(-c(year, month, day, date)) %>% 
+  group_by(countyfips, week) %>% 
+  summarise_at(vars(emp_combined:emp_combined_inchigh), mean, na.rm = TRUE) %>% ungroup()
 
 
 # Econ: county, day -> county, month
 
-econ_county_week <- econ_county %>% 
+econ_county_week_pre <- econ_county %>% 
   mutate(date = ISOdate(year,month, day),
-         week =  week(as.Date(date, "%Y-%m-%d")))
+         week =  week(as.Date(date, "%Y-%m-%d"))) %>% 
+  select(-c(year, month, day, freq, provisional, date)) %>% 
+  relocate(week, .after = countyfips)
+  
+econ_county_week <- econ_county_week_pre %>% 
+  group_by(countyfips, week) %>%
+  summarise_at(vars(spend_all:revenue_all), mean, na.rm = TRUE) %>% ungroup()
 
 
 # Covid: county, day -> county,week
@@ -574,15 +603,32 @@ safegraph_week <- home_prop_7day_use %>%
 safegraph_week$countyfips <- as.numeric( safegraph_week$geo_value)
 
 
+##### QWI sum & percap
+
+county_qwi_use <- county_qwi_agg %>% select(geography, its_emps_all, com_emps_all, all_emps_all,
+                                            its_empstotal_all, com_empstotal_all, all_empstotal_all,
+                                            its_earn_all, com_earn_all, all_earn_all) %>% 
+         left_join(county_demo[, c(1,3)], by = c("geography"= "countyfips")) %>% 
+          mutate(across(-geography, .fns = list(per_cap= ~./population), .names = "{col}_{fn}" )) %>% select(-population)
+        
+
+        
+
+
 county_week_panel <- ui_county_week %>% 
               full_join(employ_county_week) %>% 
               full_join(econ_county_week) %>% 
               full_join(covid_county_week) %>% 
               full_join(safegraph_week) %>% 
-              full_join(ci_county_all, by = c("countyfips" = "COUNTY")) 
+              full_join(ci_county_all, by = c("countyfips" = "COUNTY")) %>% 
+              full_join(policy_state_county, by = c("countyfips" = "FIPS")) %>% 
+              full_join(county_qwi_use, by = c("countyfips" = "geography" )) %>% select(-c(year, geo_value))
 
 
 
+write.csv(county_week_panel, here(out_data_path, "county_week_panel.csv"))
+
+write_dta(county_week_panel, here("Stata", "county_week_panel.dta"))
 
 
      
