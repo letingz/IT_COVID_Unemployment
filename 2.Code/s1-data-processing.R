@@ -417,7 +417,7 @@ restaurants_visit_prop <- suppressMessages(
 ############# AGGREGATE & CONSTRUCT ###############
 
 
-############# Aggregate CI data  #######
+############# Aggregate CI - COUNTY level data  #######
 
 # add county fips
 ci_data_key <- ci_site[, c("SITEID","ZIPCODE")]
@@ -436,17 +436,43 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
   full_join(ci_itspend) %>% 
   full_join(ci_site)
 
-ci_data_use <- ci_data_use %>% 
-
-ci_sum_county_winsorize<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS 
+ci_sum_county_winsorize <- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS 
                                                  ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES,
                                                  DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, 
                                                  SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
-  mutate(emple_win = winsorize(EMPLE), 
-         reven_win = winsorize(REVEN), 
-         it_budget_win = winsorize(IT_BUDGET) )
+                                  filter(EMPLE != 0 &  IT_BUDGET !=0) %>% 
+                   mutate(emple_win = winsorize(EMPLE), 
+                           reven_win = winsorize(REVEN), 
+                            it_budget_win = winsorize(IT_BUDGET),
+                           hard_budget_win = winsorize(HARDWARE_BUDGET),
+                           software_budegt_win = winsorize(SOFTWARE_BUDGET),
+                            service_budget_win = winsorize(SERVICES_BUDGET))
 
 
+
+
+ci_mean_county <- ci_sum_county_winsorize %>%
+  filter(!is.na(COUNTY)) %>% 
+  group_by(COUNTY) %>% 
+  summarise_at(5:23, mean, na.rm = TRUE) %>% 
+  ungroup() 
+
+ci_mean_county <- ci_mean_county %>% 
+  rename_with( .cols = 2:20, .fn = ~ paste0(.x, "_mean") )
+
+ci_sum_county_pre <- ci_sum_county_winsorize %>%
+  filter(!is.na(COUNTY)) %>% 
+  group_by(COUNTY) %>% 
+  summarise_at(5:23, sum, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  left_join(county_demo[, c(1,3)], by = c("COUNTY"= "countyfips"))
+
+ci_percap_county <-  ci_sum_county_pre %>% 
+  mutate(across(- c(COUNTY, population), ~ ./ population)) %>% 
+  rename_with( .cols = 2:20, .fn = ~ paste0(.x, "_percap") )
+
+
+ci_county_all <- ci_mean_county %>% full_join(ci_percap_county)
 
 
 ############# Aggregate and contruct county, weekly data #######
@@ -545,13 +571,24 @@ safegraph_week <- home_prop_7day_use %>%
   full_join(res_visit_num_use) %>% 
   full_join(res_visit_prop_use)
 
+safegraph_week$countyfips <- as.numeric( safegraph_week$geo_value)
+
+
+county_week_panel <- ui_county_week %>% 
+              full_join(employ_county_week) %>% 
+              full_join(econ_county_week) %>% 
+              full_join(covid_county_week) %>% 
+              full_join(safegraph_week) %>% 
+              full_join(ci_county_all, by = c("countyfips" = "COUNTY")) 
 
 
 
 
+
+     
 ############# Aggregate and contruct state, weekly data #######
 
-# Unemployement insurance: state, week -> county, month
+# Unemployement insurance: state, week -> state, weekly
 
 
 

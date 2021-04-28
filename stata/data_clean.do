@@ -30,13 +30,14 @@ merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\msa
 
 drop _merge
 merge m:1 statefips using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\qwi_state.dta" /* Merge state QWI data */
+
 drop _merge
 merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\qwi_county.dta" /* Merge county QWI data */
 
-* Generate new variable
-generate afterstayhome = (month > ordermonth)
-egen mean_cyber = mean( cyber_sum )
-g high_cyber = ( cyber_sum >mean_cyber )
+drop _merge
+
+merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_demographic.dta"
+
 
 
 * Label data
@@ -156,9 +157,16 @@ foreach i of local ci {
 }
 
 
-
 g after_security_itbudget = aftersh * ln_s_sw_pres * ln_it_budget
 label variable after_security_pres_it_budget "After Stay-at-Home * Security Software Presence * IT Budget"
+
+
+
+* Generate new variable
+generate afterstayhome = (month > ordermonth)
+egen mean_cyber = mean( cyber_sum )
+g high_cyber = ( cyber_sum >mean_cyber )
+
 
 
 *** LOG 
@@ -174,12 +182,51 @@ foreach i of local qwi {
 g ln_`i' = ln(`i'+1)
 }
 
-*** Percentage
+*** Percentage & Scaling
 
 g county_its_emps_prop = county_its_emps_all/ county_all_emps_all
 g county_com_emps_prop = county_com_emps_all/ county_all_emps_all
 
+g county_its_emp_pop = county_its_emps_all/population
+g it_budget_pop = it_budget/population
+
+egen mean_it_budget = mean( it_budget_pop )
+egen median_it_budget = median( it_budget_pop )
+g high_it_budget_pop_mean =  ( it_budget_pop>mean_it_budget )
+g high_it_budget_pop_med =  ( it_budget_pop> median_it_budget )
+
+egen mean_county_its = mean( county_its_emp_pop )
+egen median_county_its = median( county_its_emp_pop )
+g high_county_its_pop_mean  = (it_budget> mean_itbudget )
+g high_county_its_pop_med = ( county_its_emp_pop> median_county_its )
+
+*** Quantile indicator
+xtile IT_budget_quantile = it_budget_pop, nq(4)
+xtile its_emp_quantile = county_its_emp_pop , nq(4)
+g q4_high_its_pop = ( its_emp_quantile == 4 )
+g q4_high_it_budget_pop = ( IT_budget_quantile == 4 )
+
+
+
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\stata\county_panel.dta"
+
+
+
+*** Event study 
+
+g event = month - ordermonth
+forv tau = 3(-1)1 {
+g treatb`tau' = event == -`tau'
+la var treatb`tau' "This obs is `tau' years before the treatment"
+}
+table event
+forv tau = 0/4 {
+g treata`tau' = event == `tau'
+la var treata`tau' "This obs is `tau' years after the treatment"
+}
+
+
+
 
 
 ***************** Create state panel ******************
@@ -313,15 +360,17 @@ foreach i of local sic {
     g per_`i' = `i'/siteid
 }
 
-egen mean_itbudget = mean(it_budget)
-g high_itbudget = (it_budget> mean_itbudget )
 
 
-g county_all_female_prop = county_all_emps_female/county_all_emps_all
 
-g aftersh_ln_county_its_all = aftersh*ln_county_its_emps_all
-g aftersh_ln_county_emp  = aftersh*ln_county_all_emps_all
-g aftersh_ln_county_com_all = aftersh*ln_county_com_emps_all
+// g county_all_female_prop = county_all_emps_female/county_all_emps_all
+
+// g aftersh_ln_county_its_all = aftersh*ln_county_its_emps_all
+// g aftersh_ln_county_emp  = aftersh*ln_county_all_emps_all
+// g aftersh_ln_county_com_all = aftersh*ln_county_com_emps_all
+
+
+
 
 label variable aftersh_ln_county_its_all "After Stay-at-Home * Number of IT Services Employees"
 label variable aftersh_ln_county_emp "After Stay-at-Home * Number of Total Employees"
@@ -335,111 +384,19 @@ local depvar  "avg_initclaims_count avg_initclaims_rate emp_combined emp_combine
 
 foreach i of local depvar {
 	
-	areg `i' aftersh##c.ln_county_its_emps_all aftersh##c.ln_county_all_emps_all gps_away_from_home avg_new_death_rate avg_new_case_rate  i.month , absorb(county) rob , absorb(county) rob
-	
+	areg `i' aftersh##c.ln_county_its_emps_all aftersh##c.ln_county_all_emps_all gps_away_from_home avg_new_death_rate avg_new_case_rate  i.month , absorb(county) rob 
 	}
 	
 	
 	
 
 
-
-	
-	
-	
+areg adj_avg_iniclaims_count aftersh##c.high_county_its_pop_med L.gps_away_from_home L.avg_new_death_rate L.avg_new_case_rate  i.month , absorb(county) rob
 
 
-/*
-foreach i of local depvar {
-
-	areg `i' afterstayhome##c.ln_sum_cyber_sum i.month,  absorb(county) rob
-	areg `i' afterstayhome##c.ln_sum_cyber_sum afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven i.month,  absorb(county) rob
-	areg `i' afterstayhome##c.ln_sum_cyber_sum afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven  i.month,  absorb(county) rob
-	areg `i' afterstayhome afterstayhome##c.ln_sum_cyber_sum afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven afterstayhome##c.ln_sum_vpn_pres afterstayhome##c.ln_sum_dbms_pres afterstayhome##c.ln_sum_datawarehouse_sw_pres afterstayhome##c.ln_sum_security_sw_pres afterstayhome##c.sum_AG_M_C afterstayhome##c.sum_EDUC afterstayhome##c.sum_F_I_RE  avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
-	}
+areg emp_combined aftersh##c.high_county_its_pop_med L.gps_away_from_home L.avg_new_death_rate L.avg_new_case_rate  i.month , absorb(county) rob
 
 
-foreach i of local depvar {
+areg avg_initclaims_count naftersh##c.high_county_its_pop_med L.gps_away_from_home L.avg_new_death_rate L.avg_new_case_rate  i.month , absorb(county) rob
 
-	areg `i' afterstayhome##c.ln_sum_cyber_sum i.month,  absorb(county) rob
-	areg `i' afterstayhome##c.ln_sum_cyber_sum afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven i.month,  absorb(county) rob
-	areg `i' afterstayhome afterstayhome##c.ln_sum_cyber_sum afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven afterstayhome##c.ln_sum_vpn_pres afterstayhome##c.ln_sum_dbms_pres afterstayhome##c.ln_sum_datawarehouse_sw_pres afterstayhome##c.ln_sum_security_sw_pres afterstayhome##c.sum_AG_M_C afterstayhome##c.sum_EDUC afterstayhome##c.sum_F_I_RE  avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
-	
-	areg `i' afterstayhome##high_cyber i.month,  absorb(county) rob
-	areg `i' afterstayhome##high_cyber afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven i.month,  absorb(county) rob
-	areg `i' afterstayhome afterstayhome##high_cyber afterstayhome##c.ln_sum_emple afterstayhome##c.ln_sum_reven afterstayhome##c.ln_sum_vpn_pres afterstayhome##c.ln_sum_dbms_pres afterstayhome##c.ln_sum_datawarehouse_sw_pres afterstayhome##c.ln_sum_security_sw_pres afterstayhome##c.sum_AG_M_C afterstayhome##c.sum_EDUC afterstayhome##c.sum_F_I_RE  avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
-	
-	}
-	
-	
-foreach i of local depvar {
-
-	areg `i' afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-	areg `i' afterstayhome##c.ln_security_sw_pres afterstayhome##c.ln_emple afterstayhome##c.ln_reven i.month,  absorb(county) rob
-	areg `i' afterstayhome##c.ln_security_sw_pres##c.ln_it_budget afterstayhome##c.ln_security_sw_pres  afterstayhome##c.ln_it_budget, absorb(county) rob
-
-	
-	}
-
-
-	
-	
-	
-	
-	areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
-areg  avg_initclaims_rate afterstayhome i.month##c.ln_sum_security_sw_pres i.month##c.ln_sum_emple i.month##c.ln_sum_reven i.month i.month##c.ln_sum_it_budget i.month , absorb(county) rob
-
-
-
-areg emp_combined aftersh##c.teleworkable_manual_emp##c.ln_security_sw_pres   gps_away_from_home avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
- areg emp_combined aftersh##c.gps_away_from_home##c.ln_security_sw_pres avg_new_death_rate avg_new_case_rate i.month,  absorb(county) rob
-
- 
- 
- 
- 
-*/
- 
- 
- 
- /*
-areg avg_initclaims_count afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-areg emp_combined afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-areg emp_combined_inclow afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-areg emp_combined_incmiddle afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-areg emp_combined_inchigh afterstayhome##c.ln_security_sw_pres i.month,  absorb(county) rob
-
-
-*/
- 
-/*
-* Import EconTrack Data 
-
-import delimited data\output\econ_mean.csv
-drop v1
-destring spend_all gps_retail_and_recreation gps_grocery_and_pharmacy gps_parks gps_transit_stations gps_workplaces gps_residential gps_away_from_home merchants_all revenue_all, replace force
-rename countyfips county
-save stata\econ_panel.dta
-*/
-* Create CI county/state level data
-
-/*
-local site_sum_var "emple reven salesforce mobile_workers cyber_sum pcs it_budget hardware_budget software_budget services_budget vpn_pres idaccess_sw_pres dbms_pres datawarehouse_sw_pres security_sw_pres no_it_employee1 no_it_employee3 no_it_employee6 no_it_employee4 no_it_employee7 no_it_employee2 no_it_employee5 no_it_employee8 no_it_employee9 sic1 sic2 sic3 sic4 sic5 sic6 sic7 sic8 sic9 sic10"
-
-bys county: egen site_number = count( siteid )
-
-
-foreach i of local site_sum_var {
-	bys county: egen sum_`i' = sum(`i')
-	}
-
-foreach i of local sic {
-	local j = subinstr("`i'", "-", "_", .)
-	bys county: egen sum_`j' = count(siteid/ (sicgrp == "`i'")) 
-}
-
-save "stata\ci_raw_sum_county.dta", replace
-
-keep county statename stateabbrev county_pop2019 sum_emple sum_reven sum_salesforce sum_mobile_workers sum_cyber_sum sum_pcs sum_it_budget sum_hardware_budget sum_software_budget sum_services_budget sum_vpn_pres sum_idaccess_sw_pres sum_dbms_pres sum_datawarehouse_sw_pres sum_security_sw_pres sum_AG_M_C sum_EDUC sum_F_I_RE sum_GOVT sum_MANUF sum_MED sum_NON_CL sum_SVCS sum_TR_UTL sum_WHL_RT
-duplicates drop
-*/
+areg avg_initclaims_rate naftersh##c.high_county_its_pop_med L.gps_away_from_home L.avg_new_death_rate L.avg_new_case_rate  i.month , absorb(county) rob
