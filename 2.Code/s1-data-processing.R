@@ -336,7 +336,7 @@ geoid <- read.csv(here(raw_data_path, "GeoIDs - County.csv"), stringsAsFactors =
 
 ####### Import ACS (American Community Survey) file #######
 
-source("asc_api.R")
+source(here("2.Code", "asc_api.R"))
 
 
 
@@ -349,6 +349,11 @@ cps_ddi <- read_ipums_ddi(here(raw_data_path,"cps_00003.xml")) # Contains metada
 cps_data <- read_ipums_micro(cps_ddi, data_file = here(raw_data_path, "cps_00003.dat" ))
 
 
+table(cps_data$YEAR)
+table(cps_data$MONTH)
+table(cps_data$YEAR,cps_data$MONTH)
+
+cps_use <- cps_data %>% filter(YEAR == 2020  & COUNTY !=0)
 
 ####### Import COVIDcast data from API  #######
 #source: https://cmu-delphi.github.io/delphi-epidata/api/covidcast-signals/safegraph.html
