@@ -286,15 +286,17 @@ write.csv(state_qwi_agg,here(out_data_path , "state_qwi_agg.csv"))
 
 
 
-######## Import & Clean: IT budget data from CIDatabase  ########
+######## Import & Clean: CI Database  ########
+ci_path <- "C:/Users/Leting/Documents/CI_Investment/1.Data/1.raw_data/USA_2019"
 
 # read CI cyber data
 ci_cyber <- read.csv(here("1.Data/2.intermediate_data", "CI_cyber_use.csv"))
 ci_cyber <- subset(ci_cyber, select = c('SITEID','cyber_sum', 'IT_STAFF','PCS'))
 
 # read CI site description data
-ci_path <- readWindowsShortcut(here(raw_data_path,"USA_2019.lnk"))
-ci_path <- gsub("\\\\", "/", ci_path$pathname)
+#ci_path <- readWindowsShortcut(here(raw_data_path,"USA_2019.lnk"))
+#ci_path <- gsub("\\\\", "/", ci_path$pathname)
+
 path <- paste(ci_path, '/SiteDescription.TXT', sep = '')
 col <-  c('SITEID', 'PRIMARY_DUNS_NUMBER', 'COMPANY', 'CITY','STATE','ZIPCODE', 'MSA','EMPLE','REVEN','SALESFORCE','MOBILE_WORKERS','MOBILE_INTL', 'SICGRP', 'SICSUBGROUP')
 ci_site <- fread(path, select = col)
@@ -312,7 +314,6 @@ ci_presence[, 2:6] <- sapply(ci_presence[, 2:6], as.numeric )
 # read CI IT spend data
 path <- paste(ci_path, '/ITSpend.TXT', sep = '')
 ci_itspend <- fread(path)
-ci_itspend<- as.data.frame(ci_itspend)
 
 
 ####### Import Geo data & Geo crosswalk file #######
@@ -330,7 +331,6 @@ msa_county <- read.csv(here(raw_data_path, "COUNTY_METRO2019.CSV"))
 
 # EconomicTrack
 geoid <- read.csv(here(raw_data_path, "GeoIDs - County.csv"), stringsAsFactors = F)
-
 
 
 
@@ -455,6 +455,26 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
   full_join(ci_itspend) %>% 
   full_join(ci_site)
 
+
+
+## CI IT budget construct variables
+
+ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
+                          IT_BUDGET, HARDWARE_BUDGET, 
+                       SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
+  group_by(COUNTY) %>% 
+  mutate(it_budget_per_emp = IT_BUDGET/EMPLE ) %>% 
+  summarise(count = n(), 
+            across(EMPLE:it_budget_per_emp, mean, na.rm = TRUE, .names = "{col}_mean"), 
+            across(EMPLE:it_budget_per_emp, median, na.rm = TRUE, .names = "{col}_medium"),
+            across(EMPLE:it_budget_per_emp, sum, na.rm =TRUE, .names = "{col}_sum" ) ) %>% 
+  mutate(across(ends_with("sum"), .fns = list( per_site = ~./count), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
+  ungroup()
+  
+write.csv(ci_summarise_all, here("1.Data","2.intermediate_data", "ci_all_summary_data.csv"))               
+
+## winsorize
 ci_sum_county_winsorize <- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS 
                                                  ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES,
                                                  DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, 
@@ -468,15 +488,11 @@ ci_sum_county_winsorize <- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Nam
                             service_budget_win = winsorize(SERVICES_BUDGET))
 
 
-
-
 ci_mean_county <- ci_sum_county_winsorize %>%
   filter(!is.na(COUNTY)) %>% 
   group_by(COUNTY) %>% 
   summarise_at(5:23, mean, na.rm = TRUE) %>% 
-  ungroup() 
-
-ci_mean_county <- ci_mean_county %>% 
+  ungroup() %>% 
   rename_with( .cols = 2:20, .fn = ~ paste0(.x, "_mean") )
 
 ci_sum_county_pre <- ci_sum_county_winsorize %>%
@@ -491,9 +507,13 @@ ci_percap_county <-  ci_sum_county_pre %>%
   rename_with( .cols = 2:20, .fn = ~ paste0(.x, "_percap") )
 
 
-ci_county_all <- ci_mean_county %>% full_join(ci_percap_county) %>% 
+ci_county_all <- ci_mean_county %>% 
+              full_join(ci_mean_county) %>% 
+              full_join(ci_percap_county) %>% 
+              full_join(ci_sum_county_pre)
 
-
+ci_county_for_analyses <-  ci_mean_county %>% 
+                  full_join(ci_percap_county) %>% ci_percap_county %>% ci_sum_county_pre
 ############# Aggregate and contruct county, weekly data #######
 
 # Unemployement insurance:  county, week
