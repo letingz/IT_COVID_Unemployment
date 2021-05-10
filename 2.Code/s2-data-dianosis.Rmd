@@ -5,6 +5,12 @@ date: "5/1/2021"
 output: html_document
 ---
 
+```{r}
+library(ggplot2)
+```
+
+
+
 ```{r Load data}
 load("~/Covid-Cyber-Unemploy/0427weekly.RData")
 ```
@@ -105,7 +111,7 @@ summary_outcome %>%  ggplot(aes( y = indicator , x = value_use))+
                     scale_y_discrete(labels = c("pop" = "All Counties", "ui" = "Unemployment Insurance", "pay" = "Payroll", "cps" = "Current Population Survey"))+
               scale_alpha_manual(values = c(0.6,1)) +
               facet_wrap(~facet, scales = "free_x") + 
-               theme_minimal()+  labs(x = "", y = "", title = "A Comparison in Features of (Un)Employment Between Data \n between Three Sources " )
+               theme_minimal()+  labs(x = "", y = "", title = "Data Representativeness" )
 
 #scale_fill_manual(values = c("red","red","red","red")) +
 

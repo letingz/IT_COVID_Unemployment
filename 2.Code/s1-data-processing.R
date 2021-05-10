@@ -459,6 +459,7 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
 
 ## CI IT budget construct variables
 
+# No winsorzied
 ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
                           IT_BUDGET, HARDWARE_BUDGET, 
                        SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
