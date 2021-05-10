@@ -64,7 +64,7 @@ estadd local con "YES"
  
  #delimit ;
 
-esttab  _all using "`filename'", a keep(treat* 1.treat*#1.q4_high_it_budget_median )
+esttab  _all using "`filename'", a keep(treat* 1.treat*#1.q4_high_it_budget_median `con')
 		title(2. )
 		label stat( r2 N df_a tfixed hfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
@@ -171,7 +171,7 @@ est clear
  
  est clear
  
-eststo:areg initclaims_rate_regular tre tre## q4_high_it_budget_median ##c.internetper `con' i.week, absorb(county) rob
+eststo:areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.internetper `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
@@ -184,15 +184,22 @@ eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.ln_inco
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
-eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps ##c.ln_income `con' i.week, absorb(county) rob
+eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps##c.ln_income `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
 
 #delimit ;
 
-esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_its_emps#c.internetper 1.tre#*1.q4_high_its_emps#c.ln_income  `con' )
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#1.q4_high_its_emps#c.internetper
+							1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_its_emps#c.ln_income
+										 1.tre#1.q4_high_it_budget_median 1.tre#*1.q4_high_its_emps
+										1.tre#c.ln_income 1.tre#c.internetper  `con' )
 		title(6. )
+		order(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#1.q4_high_its_emps#c.internetper
+							1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_its_emps#c.ln_income
+										 1.tre#1.q4_high_it_budget_median 1.tre#*1.q4_high_its_emps
+										 1.tre#c.internetper  1.tre#c.ln_income  `con')		
 		label stat( r2 N df_a tfixed hfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
 		 b(3) nogap onecell 
@@ -203,7 +210,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_its_emps#c.internet
 
 est clear
 
- 
+
  
  * Telework & Com  (robustness)
  
