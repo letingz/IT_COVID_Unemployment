@@ -7,9 +7,6 @@
 # status: NEXT: CI Winsorize
    
 
-
-
-
 ####### Preperation ########
   
 library(tidyverse)
@@ -459,6 +456,12 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
 
 ## CI IT budget construct variables
 
+demo <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
+                                                    IT_BUDGET, HARDWARE_BUDGET, 
+                                                    SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
+  mutate(it_budget_per_emp = IT_BUDGET/EMPLE, it_budget_win =  winsorize(it_budget_per_emp) ) 
+
 # No winsorzied
 ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
                           IT_BUDGET, HARDWARE_BUDGET, 
@@ -652,16 +655,10 @@ county_week_panel <- ui_county_week %>%
 
 
 
+
 write.csv(county_week_panel, here(out_data_path, "county_week_panel.csv"))
 
 write_dta(county_week_panel, here("Stata", "county_week_panel.dta"))
-
-
-     
-############# Aggregate and contruct state, weekly data #######
-
-# Unemployement insurance: state, week -> state, weekly
-
 
 
 
@@ -670,14 +667,14 @@ write_dta(county_week_panel, here("Stata", "county_week_panel.dta"))
 ############# Aggregate and contruct county, monthly data #######
 
 # Unemployement insurance: county, week -> county, month
-ui_mean_county <- ui_county %>% 
+ui_county_month <- ui_county %>% 
   group_by(month, countyfips) %>% 
   summarise (avg_initclaims_count = mean(initclaims_count_regular, na.rm = T),
              avg_initclaims_rate = mean(initclaims_rate_regular, na.rm = T)  ) %>% 
   ungroup
 
 # Employment rate: county, day -> county, month
-employ_mean_county <- employment_county %>% 
+employ_county_month <- employment_county %>% 
   group_by(month, countyfips) %>% 
   summarise_at(c("emp_combined","emp_combined_inclow", "emp_combined_incmiddle", "emp_combined_inchigh"), mean, na.rm = TRUE) %>% ungroup()
 
@@ -693,14 +690,14 @@ ci_sum_county<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, R
 
 # Econ: county, day -> county, month
 
-econ_mean_county <- econ_county %>% 
+econ_county_month <- econ_county %>% 
   group_by(month, countyfips) %>% 
   summarise_at(c('spend_all','gps_retail_and_recreation','gps_grocery_and_pharmacy','gps_parks', 'gps_transit_stations',
                  'gps_workplaces', 'gps_residential', 'gps_away_from_home', 'merchants_all', 'revenue_all'), mean, na.rm = TRUE) %>% ungroup()
 
 # Covid: county, day -> county,month
 
-covid_stat_county <-  covid_county %>% 
+covid_county_month <-  covid_county %>% 
   group_by(countyfips,month) %>% 
   summarise(case_count = max(case_count, na.rm = T),
             death_count = max(death_count, na.rm = T),
@@ -715,24 +712,28 @@ covid_stat_county <-  covid_county %>%
 
 # Aggregation
 
-data_county <- ui_mean_county %>% 
-  full_join(employ_mean_county, c('month', 'countyfips') ) %>% 
+county_month_panel <- ui_county_month %>% 
+  full_join(employ_county_month, c('month', 'countyfips') ) %>% 
   full_join(geoid[, c('countyfips', 'statefips', 'stateabbrev')], 'countyfips' ) %>% 
-  full_join(econ_mean_county, c('month', 'countyfips')) %>% 
-  full_join(covid_stat_county, c('month', 'countyfips')) %>% 
+  full_join(econ_county_month, c('month', 'countyfips')) %>% 
+  full_join(covid_county_month, c('month', 'countyfips')) %>% 
   full_join(state_policy, c('statefips')) %>% 
   full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
+
+
+
+
 
 ############# Aggregate and contruct state, monthly data #######
 
 
 # Unemployement insurance: state, week -> state, month
-ui_mean_state <- ui_state %>% 
+ui_state_month <- ui_state %>% 
   group_by(month,statefips) %>% 
   summarise_at(c('initclaims_count_regular', 'initclaims_rate_regular', 'contclaims_count_regular', 'contclaims_rate_regular', 'initclaims_count_pua', 'contclaims_count_pua'), mean, na.rm = TRUE)
 
 # Employment rate: county, day -> county, month
-employ_mean_state <- employment_state %>% 
+employ_state_month <- employment_state %>% 
   group_by(month, statefips) %>% 
   summarise_at(c("emp_combined","emp_combined_inclow", "emp_combined_incmiddle", "emp_combined_inchigh",  "emp_combined_ss40", "emp_combined_ss60", "emp_combined_ss65", "emp_combined_ss70" ), mean, na.rm = TRUE)
 
@@ -740,21 +741,21 @@ employ_mean_state <- employment_state %>%
 
 # CI: site -> state (sum)
 
-ci_sum_state<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES, DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+ci_state<- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES, DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
   group_by(STATE) %>% 
   summarise_at(c('EMPLE', 'REVEN', 'MOBILE_WORKERS','cyber_sum','VPN_PRES','IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES', 'PCS', 'IT_BUDGET', 'HARDWARE_BUDGET', 'SOFTWARE_BUDGET','SERVICES_BUDGET'), sum, na.rm = TRUE) %>% 
   ungroup()
 
 
 # Econ: state, day -> state, month
-econ_mean_state <- econ_state%>% 
+econ_state_month <- econ_state%>% 
   group_by(month, statefips) %>% 
   summarise_at(vars(spend_acf:revenue_ss70), mean, na.rm = TRUE)
 
 
 # Covid: state, day -> state,month
 
-covid_stat_state <-  covid_state %>% 
+covid_state_month <-  covid_state %>% 
   group_by(month, statefips) %>% 
   summarise(test_count = max(test_count, na.rm = T),
             test_rate = max(test_rate, na.rm = T),
@@ -767,7 +768,9 @@ covid_stat_state <-  covid_state %>%
             avg_new_case_rate = mean(new_case_count, na.rm = T),
             avg_new_death_rate = mean(new_death_count, na.rm =T),
             
-  )
+  ) %>% ungroup()
+
+
 
 data_state <- ui_mean_state %>% 
   full_join(employ_mean_state, c('month', 'statefips') ) %>% 
@@ -779,12 +782,26 @@ data_state <- ui_mean_state %>%
   full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
 
 
+state_month_panel <- ui_state_month %>% 
+  full_join(employ_state_month, c('month', 'statefips') ) %>% 
+  left_join(geoid[, c('statefips', 'stateabbrev')], 'statefips' ) %>% 
+  unique() %>% 
+  full_join(econ_state_month, c('month', 'statefips')) %>% 
+  full_join(covid_state_month, c('month', 'statefips')) %>% 
+  full_join(state_policy, c('statefips')) %>% 
+  full_join(shelterdate[, c('abb', 'OrderMonth', 'OrderDay')], c('stateabbrev' = 'abb') )
+
+
+
+
+
 ############# OUTPUT ###############
 
-summary(data_county)
-summary(data_state)
+write.csv(county_month_panel, here(out_data_path, "county_month_panel.csv"))
 
-write.csv(data_county, here(out_data_path,"data_county.csv") )
-write.csv(data_state, here( out_data_path, "data_state.csv") )
+#write_dta(county_month_panel, here("Stata", "county_month_panel.dta"))
 
 
+write.csv(state_month_panel, here(out_data_path, "state_month_panel.csv"))
+
+#write_dta(county_month_panel, here("Stata", "county_month_panel.dta"))

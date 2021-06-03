@@ -2,7 +2,9 @@
 title: "Visuzalition"
 author: "Leting Zhang"
 date: "04/07/2021"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 
@@ -21,7 +23,6 @@ library(DT)
 library(R.utils)
 library(data.table)
 library(reshape)
-
 library(socviz)
 library(hrbrthemes)
 library(ggrepel)
@@ -29,11 +30,10 @@ library(psych)
 library(panelView)
 library(haven)
 library(DataExplorer)
-
 library(here)
 
 
-install.packages("DataExplorer")
+#install.packages("DataExplorer")
 
 theme_map <- function(base_size=9, base_family="") {
       require(grid)
@@ -59,9 +59,7 @@ theme_map <- function(base_size=9, base_family="") {
 
 state_panel <- read_dta(here("Stata", "state_panel.dta"))
 county_panel <- read_dta("county_panelnew.dta")
-panel_use1
 
-ui_mean_state, state_home,
 ```
 
 ```{r descriptive plot using "DataExplorer" package}
@@ -111,6 +109,8 @@ ui_state_policy <- merge(ui_mean_state, state_home, by = "statefips", all.x = TR
     labs(caption = "Note: UI claim rates =  Number of initial claims per 100 people in the 2019 labor force.")
 
 
+ 
+ 
 # #geom_text_repel(data = subset(ui_state_policy, month == max(month) ),
 #                            mapping = aes(x = month, y = initclaims_rate_regular,      label = state),
 #                            size = 1.8, segment.color = NA, nudge_x = 30) +
@@ -140,7 +140,7 @@ scale_color_manual(name = "Stay at Home Order Enforcement", labels = c("No", "YE
          legend.title = element_text(size = rel(0.8)),
          plot.caption = element_text(size = rel(1)),
          legend.position = "top") +
-labs(caption = "Note: Employment levels relative to Jan 4-31 2020 from Paychex, Intuit, Earnin and Kronos."  )
+labs(caption = "Note: Employment levels relative to Jan 4-31 2020 from Paychex, Intuit, Earnin and Kronos.")
 
 ```
 
@@ -231,33 +231,6 @@ state_policy %>%
 ## Trends
 
 ```{r Use this }
-
-labels <- c("No Stay-At-Home * Low IT", "Stay-At-Home * Low IT", "No Stay-At-Home * High IT" , "Stay-At-Home * High IT" )
-
- county_panel %>% 
-  select(month, county, aftersh, avg_initclaims_rate,  home, its_emps_high) %>% 
- group_by(month, home, its_emps_high) %>% 
-  summarise_at(c("avg_initclaims_rate"), mean, na.rm = TRUE ) %>% 
-   ggplot(aes(x = month, y = avg_initclaims_rate, linetype = interaction(factor(home), factor(its_emps_high)) , color = interaction(factor(home), factor(its_emps_high)) ))+  
-   geom_line(size = 1.3) +   
-   scale_color_manual(  name = "Conditions", values =  c("#f4a261", "#264653", "#f4a261", "#264653"), label = labels) +
-   scale_linetype_manual(name = "Conditions", values =  c("dashed", "dashed", "solid", "solid"), label = labels) +
-   scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
-   labs(x = "", y = "Rate %", 
-        title = "State-level Unemployment Insurance (UI) Claim Rate - 2020 \n Stay at Home x IT Intensity") +  
-   guides(color = guide_legend(nrow=2,byrow=TRUE))+
-   theme_minimal() + 
-   theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
-           legend.title = element_text(size = rel(0.8)),
-            legend.key.width= unit(1.5, 'cm'),
-           plot.caption = element_text(size = rel(0.8)),
-           legend.position = "top") +
-  labs(caption = "Note: UI claim rates =  Number of initial claims per 100 people in the 2019 labor force.")
-
-
-```
-
-```{r}
 labels <- c("No Stay-At-Home * Low IT", "Stay-At-Home * Low IT", "No Stay-At-Home * High IT" , "Stay-At-Home * High IT" )
 
  county_panel %>% 
@@ -281,7 +254,31 @@ labels <- c("No Stay-At-Home * Low IT", "Stay-At-Home * Low IT", "No Stay-At-Hom
   labs(caption = "Note: UI claim rates =  Number of initial claims per 100 people in the 2019 labor force.")
 ```
 
+```{r }
 
+labels <- c("No Stay-At-Home * Low IT", "Stay-At-Home * Low IT", "No Stay-At-Home * High IT" , "Stay-At-Home * High IT" )
+
+ county_panel %>% 
+  select(month, county, aftersh, avg_initclaims_rate,  home, its_emps_high) %>% 
+ group_by(month, home, its_emps_high) %>% 
+  summarise_at(c("avg_initclaims_rate"), mean, na.rm = TRUE ) %>% 
+   ggplot(aes(x = month, y = avg_initclaims_rate, linetype = interaction(factor(home), factor(its_emps_high)) , color = interaction(factor(home), factor(its_emps_high)) ))+  
+   geom_line(size = 1.3) +   
+   scale_color_manual(  name = "Conditions", values =  c("#f4a261", "#264653", "#f4a261", "#264653"), label = labels) +
+   scale_linetype_manual(name = "Conditions", values =  c("dashed", "dashed", "solid", "solid"), label = labels) +
+   scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+   labs(x = "", y = "Rate %", 
+        title = "State-level Unemployment Insurance (UI) Claim Rate - 2020 \n Stay at Home x IT Intensity") +  
+   guides(color = guide_legend(nrow=2,byrow=TRUE))+
+   theme_minimal() + 
+   theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+            legend.key.width= unit(1.5, 'cm'),
+           plot.caption = element_text(size = rel(0.8)),
+           legend.position = "top") +
+  labs(caption = "Note: UI claim rates =  Number of initial claims per 100 people in the 2019 labor force.")
+
+```
 
 ```{r Not consistent}
 
@@ -328,25 +325,6 @@ panel_use1 %>%
             its_rate = log(its_emp*100/all_emp+1)) %>% 
   ggplot(aes(x = month, y = unemp, color = factor(home)) ) + scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+ geom_point(aes(size = its_rate))
 
-```
-
-
-```{r }
- county_panel %>% 
-  select(month, county, aftersh, avg_initclaims_rate,  home, its_emps_high) %>% 
- group_by(month, home, its_emps_high) %>% 
-  summarise_at(c("avg_initclaims_rate"), mean, na.rm = TRUE ) %>% 
-   ggplot(aes(x = month, y = avg_initclaims_rate, linetype = factor(home), color = factor(its_emps_high)))+ geom_line(size = 1.3) +   scale_linetype_manual(name="Stay at Home", values = c("dashed", "solid" ),labels=c("No","Yes")) +
- scale_color_manual( name = "IT Intensity", values = c("#f4a261", "#264653"), labels=c("Low","High")) +
-  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
-   labs(x = "", y = "Rate %", title = "State-level Unemployment Insurance (UI) Claim Rate - 2020 \n Stay at Home x IT Intensity") +  
-      theme_minimal() + 
-      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
-           legend.title = element_text(size = rel(0.8)),
-            legend.key.width= unit(1.5, 'cm'),
-           plot.caption = element_text(size = rel(0.8)),
-           legend.position = "top") +
-  labs(caption = "Note: UI claim rates =  Number of initial claims per 100 people in the 2019 labor force.")
 ```
 
 
@@ -446,8 +424,6 @@ panel_use1 <- merge(panel_use1, county_qwi_agg, by.x = "COUNTY", by.y = "geograp
 panel_use1 <- merge(panel_use1, econ_mean_county, by.x = c("COUNTY", "month"), by.y = c("countyfips","month"))
 
 
-str(panel_use1)
-describe(panel_use1)
 ```
 
 ```{r use this}
@@ -459,7 +435,7 @@ county_qwi_agg %>%
   ggplot(mapping = aes(x = long, y = lat, 
                        fill = ln_its_rate, group = group)) +
       geom_polygon(color = "gray90", size = 0.05) +
-      coord_equal() + scale_fill_gradient2(low = "gray", mid = scales::muted("red"), high = "blue")+
+      coord_equal() + scale_fill_gradient2(low = "gray", mid = scales::muted("red"), high = "blue", midpoint = 2)+
     labs(fill = " IT Intensity ") + theme_map() +
     theme(legend.position = "right")+  labs(x = "", y = "", title = "IT Intensity - 2019 Q4 \n County Level") +  
       theme(plot.title = element_text(size = rel(2), hjust = 0.5),
@@ -468,6 +444,74 @@ county_qwi_agg %>%
            legend.position = c(0.98, 0.40)) + labs(caption = "IT intensity = Log(100*IT Service Employees/All Employees + 1) "  )
   
 ```
+
+```{r}
+demo <- county_qwi_agg %>% 
+  select(geography,its_emps_all, com_emps_all, all_emps_all) %>% 
+  mutate(ln_its_rate = log(its_emps_all*100/all_emps_all+1)) %>% 
+  right_join(county_map, by = c("geography"  = "county") )
+```
+
+```{r}
+demo <- ci_summarise_all %>% select(COUNTY, IT_BUDGET_medium, it_budget_per_emp_medium) %>% 
+  right_join(county_map, by = c("COUNTY"  = "county") )
+
+demo <-ci_summarise_all %>% select(COUNTY, IT_BUDGET_medium, it_budget_per_emp_medium) %>%
+  mutate(it = log(IT_BUDGET_medium) ) %>% 
+  right_join(county_map, by = c("COUNTY"  = "county") ) 
+
+
+summary(demo)
+
+# %>% 
+#   right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
+#   ggplot(mapping = aes(x = long, y = lat, 
+#                        fill = ln_it, group = group)) +
+#       geom_polygon(color = "gray90", size = 0.05) +
+#       coord_equal() + scale_fill_gradient2(low = "gray", mid = scales::muted("white"), high = "blue") + 
+#       labs(fill = " IT Intensity ") + theme_map() 
+
+```
+
+```{r}
+ci_summarise_all %>% select(COUNTY, IT_BUDGET_medium, it_budget_per_emp_medium,count) %>%
+  mutate(it = log(it_budget_per_emp_medium) ) %>% 
+  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + scale_fill_gradient(high = "blue", low= "grey", breaks = c(9,8.5,8), labels = paste("$", c('8,103', '4,915', '2,980')) ) + 
+      labs(fill = "") + theme_map() + theme(legend.position = "right")+  
+  labs(x = "", y = "", title = "  IT Budget per Employee \nCounty Level") +  
+      theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
+           plot.caption = element_text(size = rel(1.2), hjust = 0),
+           #legend.title = element_text(size = rel(1.5)),
+            legend.text = element_text(size=15),
+           legend.position = c(0.98, 0.40)) + labs(caption = "Source: CiTDB 2019"  )
+  
+```
+```{r}
+ci_summarise_all %>% select(COUNTY, IT_BUDGET_medium, it_budget_per_emp_medium) %>%
+  mutate(it = log(it_budget_per_emp_medium) ) %>% 
+  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + scale_fill_gradient(high = "blue", low= "grey90" ,n.breaks = 5) + 
+      labs(fill = " IT Intensity ") + theme_map() 
+```
+
+```{r}
+ci_summarise_all %>% select(COUNTY, IT_BUDGET_medium, it_budget_per_emp_medium) %>%
+  mutate(it = log(IT_BUDGET_medium) ) %>% 
+  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + scale_fill_gradient(high = "springgreen4", low= "grey90", name="Sum") + 
+      labs(fill = " IT Intensity ") + theme_map() 
+```
+
 
 ```{r}
 
@@ -576,4 +620,23 @@ panelView(turnout ~ policy_edr , data = turnout, treat.type = "continuous",index
 
 ```
 
+# Archive
 
+
+```{r }
+ county_panel %>% 
+  select(month, county, aftersh, avg_initclaims_rate,  home, its_emps_high) %>% 
+ group_by(month, home, its_emps_high) %>% 
+  summarise_at(c("avg_initclaims_rate"), mean, na.rm = TRUE ) %>% 
+   ggplot(aes(x = month, y = avg_initclaims_rate, linetype = factor(home), color = factor(its_emps_high)))+ geom_line(size = 1.3) +   scale_linetype_manual(name="Stay at Home", values = c("dashed", "solid" ),labels=c("No","Yes")) +
+ scale_color_manual( name = "IT Intensity", values = c("#f4a261", "#264653"), labels=c("Low","High")) +
+  scale_x_continuous(breaks = seq(1,10,1), labels = function(x)month.abb[x])+
+   labs(x = "", y = "Rate %", title = "State-level Unemployment Insurance (UI) Claim Rate - 2020 \n Stay at Home x IT Intensity") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+            legend.key.width= unit(1.5, 'cm'),
+           plot.caption = element_text(size = rel(0.8)),
+           legend.position = "top") +
+  labs(caption = "Note: UI claim rates =  Number of initial claims per 100 people in the 2019 labor force.")
+```

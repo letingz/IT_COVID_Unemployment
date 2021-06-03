@@ -136,6 +136,7 @@ merge m:1 county using `hold'
 
 
 
+
 * Log
 g ln_com_emp = log( com_emps_all  + 1)
 g ln_its_emps = log( its_emps_all  + 1)
@@ -187,6 +188,14 @@ foreach i of local var {
 
  labvars initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop "Unemployment Count" "Unemployment Rate" "Employment Level"  "COVID Death Rate" "COVID New Case Rate" "Stay at Home Index"
 
+ 
+ 
+* Adjecent county 
+
+use "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\adjacent_county_info.dta" 
+joinby county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_weekly_ui.dta", unmatched(none)
+
+ 
 ** Table 1: Main analyses
 
 ** Continuous
