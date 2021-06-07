@@ -44,6 +44,7 @@ ui_state <- ui_state%>% mutate_if(is.character,as.numeric)
 
 
 # Other indicators
+
 affinity_county <- read.csv(here(raw_data_path,"/EconomicTracker-main/data/Affinity - County - Daily.csv"))
 affinity_state <- read.csv(here(raw_data_path,"/EconomicTracker-main/data/Affinity - State - Daily.csv"))
 
@@ -69,7 +70,7 @@ econ_state <- econ_state%>% mutate_if(is.character,as.numeric)
 
 ####### Import State/County Stay at Home - EconomicTracker ########
 
-# source:  https://github.com/OpportunityInsights/EconomicTracker
+#Source:  https://github.com/OpportunityInsights/EconomicTracker
 #National Emergency Concerning: March 13 
 #Reference: https://www.whitehouse.gov/presidential-actions/proclamation-declaring-national-emergency-concerning-novel-coronavirus-disease-covid-19-outbreak/
 #Other Source: https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
@@ -313,6 +314,14 @@ path <- paste(ci_path, '/ITSpend.TXT', sep = '')
 ci_itspend <- fread(path)
 
 
+# read 2019 IT group data (processed in HPC center "covid_tech_analyses.Rmd" )
+
+adopttech_19 <- readRDS("~/Covid-Cyber-Unemploy/1.Data/1.raw_data/adopttech_19_site_techgroup.rds")
+
+
+
+
+
 ####### Import Geo data & Geo crosswalk file #######
 
 #source: census website PS: USE THE NEW ONE 
@@ -433,6 +442,7 @@ restaurants_visit_prop <- suppressMessages(
 ############# AGGREGATE & CONSTRUCT ###############
 
 
+
 ############# Aggregate CI - COUNTY level data  #######
 
 # add county fips
@@ -518,6 +528,31 @@ ci_county_all <- ci_mean_county %>%
 
 ci_county_for_analyses <-  ci_mean_county %>% 
                   full_join(ci_percap_county) %>% ci_percap_county %>% ci_sum_county_pre
+
+
+
+# Create variable_per_emp panel dataset
+
+
+ci_data_per_emp <- ci_data_use %>% select(SITEID, EMPLE, REVEN, PCS, IT_BUDGET, HARDWARE_BUDGET, 
+                       SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+                 filter(EMPLE != 0 &  IT_BUDGET !=0) %>%
+                 mutate(across(ends_with("BUDGET"), .fns = list( per_emp = ~./EMPLE), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
+                 select ( -c(ends_with("BUDGET"))) %>% 
+                 left_join(adopttech_19) %>% 
+                 select(SITEID, EMPLE, REVEN, PCS, COUNTY, division, division_name, 
+                        ends_with("per_emp"), starts_with("number_app_per_emp_") )
+
+
+
+
+ci_per_emp_county <-  ci_data_per_emp %>% 
+                      group_by(COUNTY) %>% 
+                      summarise(across(IT_BUDGET_per_emp: number_app_per_emp_Network, median, 
+                                       na.rm = TRUE, .names = "{col}_medium")) %>% 
+                      ungroup()
+write_dta(ci_per_emp_county, here(out_data_path, "ci_per_emp_county.dta"))
+
 ############# Aggregate and contruct county, weekly data #######
 
 # Unemployement insurance:  county, week

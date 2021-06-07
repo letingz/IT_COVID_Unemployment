@@ -3,6 +3,7 @@ title: "Cybersecurity and Future of Working from Home"
 author: "LetingZhang"
 date: "11/22/2020"
 output: html_document
+change: Data cleaning process: using "s1-data-processing.R"
 ---
 
 # Preperation

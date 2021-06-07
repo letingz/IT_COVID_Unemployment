@@ -2,7 +2,6 @@
 #title: "ACS"
 #author: Leting Zhang
 #date: 03/31/2021
-#output: html_notebook
 #############
 
 # Tidycensus usage: https://walker-data.com/tidycensus/articles/basic-usage.html
