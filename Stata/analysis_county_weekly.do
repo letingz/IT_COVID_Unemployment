@@ -12,6 +12,7 @@ local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 local filename "report_0510.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_group "number_per_emp_Dev_mediun number_per_emp_Enterprise_mediun number_per_emp_Cloud_mediun number_per_emp_Database_mediun number_per_emp_WFH_mediun number_per_emp_Marketing_mediun number_per_emp_Security_mediun number_per_emp_Network_mediun"
 
 **#  IT Budget
 est clear
@@ -54,7 +55,6 @@ eststo:areg initclaims_rate_regular treatb5- treata5 (treatb5- treata5)##q4_high
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 estadd local con "NO" 
-
 
 eststo:areg initclaims_rate_regular treatb5- treata5 (treatb5- treata5)##q4_high_it_budget_median `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
@@ -105,6 +105,103 @@ estadd local hfixed "YES"
 esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_its_emps 1.tre#*c.ln_its_emps 1.tre#c.ln_pop `con'  )
 		title(3. )
 		order(tre 1.tre#*1.q4_high_its_emps 1.tre#*c.ln_its_emps 1.tre#c.ln_pop `con' )
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+
+
+ 
+ * Heterogneity 1: demographics
+ 
+ est clear
+ 
+eststo:areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.internetper `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+ 
+eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps##c.internetper `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.ln_income `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps##c.ln_income `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+
+#delimit ;
+
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#1.q4_high_its_emps#c.internetper
+							1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_its_emps#c.ln_income
+										 1.tre#1.q4_high_it_budget_median 1.tre#*1.q4_high_its_emps
+										1.tre#c.ln_income 1.tre#c.internetper  `con' )
+		title(6. )
+		order(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#1.q4_high_its_emps#c.internetper
+							1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_its_emps#c.ln_income
+										 1.tre#1.q4_high_it_budget_median 1.tre#*1.q4_high_its_emps
+										 1.tre#c.internetper  1.tre#c.ln_income  `con')		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+
+* Heterogneity 2: IT app groups
+ 
+ local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local filename "report_0510.rtf"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_group "number_per_emp_Dev_mediun number_per_emp_Enterprise_mediun number_per_emp_Cloud_mediun number_per_emp_Database_mediun number_per_emp_WFH_mediun number_per_emp_Marketing_mediun number_per_emp_Security_mediun number_per_emp_Network_mediun"
+
+ 
+foreach m of local  it_group {
+
+	areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	*eststo: areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	*estadd local tfixed "YES"
+	*estadd local hfixed "YES"
+	}
+ 
+ 
+ * Telework & Com  (robustness)
+ local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+ 
+est clear
+ 
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median tre##c.teleworkable_emp `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps tre##c.teleworkable_emp `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+ 
+eststo:areg initclaims_rate_regular tre tre##c.ln_its_emps tre##c.ln_com_emps  `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES" 
+ 
+
+
+#delimit ;
+
+esttab  _all using "a.rtf", a keep(tre 1.tre#* )
+		title(7. )
 		label stat( r2 N df_a tfixed hfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
 		 b(3) nogap onecell 
@@ -170,82 +267,4 @@ est clear
 // #delimit cr;
 // est clear
 
- 
- * Heterogneity
- 
- est clear
- 
-eststo:areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.internetper `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
 
- 
-eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps##c.internetper `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
-eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.ln_income `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
-eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps##c.ln_income `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
-
-#delimit ;
-
-esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#1.q4_high_its_emps#c.internetper
-							1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_its_emps#c.ln_income
-										 1.tre#1.q4_high_it_budget_median 1.tre#*1.q4_high_its_emps
-										1.tre#c.ln_income 1.tre#c.internetper  `con' )
-		title(6. )
-		order(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#1.q4_high_its_emps#c.internetper
-							1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_its_emps#c.ln_income
-										 1.tre#1.q4_high_it_budget_median 1.tre#*1.q4_high_its_emps
-										 1.tre#c.internetper  1.tre#c.ln_income  `con')		
-		label stat( r2 N df_a tfixed hfixed,
-		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
-		 b(3) nogap onecell 
-		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
-		starlevels( `starlevel') se ;
-	
-#delimit cr;
-
-est clear
-
-
- 
- * Telework & Com  (robustness)
- local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
- 
-est clear
- 
-eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median tre##c.teleworkable_emp `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
-eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps tre##c.teleworkable_emp `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
- 
-eststo:areg initclaims_rate_regular tre tre##c.ln_its_emps tre##c.ln_com_emps  `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES" 
- 
-
-
-#delimit ;
-
-esttab  _all using "a.rtf", a keep(tre 1.tre#* )
-		title(7. )
-		label stat( r2 N df_a tfixed hfixed,
-		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
-		 b(3) nogap onecell 
-		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
-		starlevels( `starlevel') se ;
-	
-#delimit cr;
-
-est clear
