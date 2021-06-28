@@ -294,6 +294,9 @@ use "`results_tbl'", clear
 list
 
 
+
+
+
 *Reg save long
 
 tempfile results_tbl
@@ -329,4 +332,17 @@ foreach i of local it  {
 
 use "`results'", clear
 list
+
+
+**# Labels
+
+label variable number_per_emp_Enterprise_median "Enterprise apps"
+label variable number_per_emp_Dev_mdedian "Dev apps"
+label variable number_per_emp_Cloud_median "Cloud apps"
+label variable number_per_emp_Database_median "Database apps"
+label variable number_per_emp_WFH_median "WFH apps"
+label variable number_per_emp_Marketing_median "Marketing apps"
+label variable number_per_emp_Security_median "Security apps"
+label variable number_per_emp_Network_median "Networks"
+label variable number_per_emp_Network_median "Networks apps"
 

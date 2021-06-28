@@ -7,7 +7,7 @@
 # status: NEXT: CI Winsorize
    
 
-####### Preperation ########
+####### LOAD LIBRARY ########
   
 library(tidyverse)
 library(here)
@@ -20,7 +20,7 @@ library(haven)
 raw_data_path <- here("1.Data","1.raw_data")
 out_data_path <- here("1.Data","3.output_data")
 
-############# IMPORT & CLEAN ###############
+############# IMPORT & CLEAN DATA ###############
 
 ####### Import Economic Indicator - EconomicTracker ########
 
@@ -549,8 +549,13 @@ ci_data_per_emp <- ci_data_use %>% select(SITEID, EMPLE, REVEN, PCS, IT_BUDGET, 
 ci_per_emp_county <-  ci_data_per_emp %>% 
                       group_by(COUNTY) %>% 
                       summarise(across(IT_BUDGET_per_emp: number_app_per_emp_Network, median, 
-                                       na.rm = TRUE, .names = "{col}_medium")) %>% 
-                      ungroup()
+                                       na.rm = TRUE, .names = "{col}_mediun")) %>%
+                      ungroup() %>% 
+                      rename_at( .vars = vars(starts_with("number_app_per_emp_")), # reduce the length of name
+                       .funs = funs(gsub("_app", "", ., fixed = TRUE)) ) %>% 
+                      rename( county = COUNTY)
+
+    
 write_dta(ci_per_emp_county, here(out_data_path, "ci_per_emp_county.dta"))
 
 ############# Aggregate and contruct county, weekly data #######

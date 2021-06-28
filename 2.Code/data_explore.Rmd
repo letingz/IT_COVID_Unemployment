@@ -1426,3 +1426,33 @@ ggplot(unemploy_new, aes(x = YearMonth, y =prop, group  = 1)) +
   labs(title = "New workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
 
 ```
+
+```{r Try}
+
+ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
+                          IT_BUDGET, HARDWARE_BUDGET, 
+                       SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
+  filter(COUNTY %in% c(72091, 72135, 72137, 72145, 486301, 15005)) %>% 
+  group_by(COUNTY) %>% 
+  mutate(count_county_estab = n(), 
+         it_budget_per_emp = IT_BUDGET/EMPLE,
+         emple_win = ifelse(count_county_estab >1, winsorize(EMPLE), EMPLE) ) 
+  
+
+
+ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
+                          IT_BUDGET, HARDWARE_BUDGET, 
+                       SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
+  group_by(COUNTY) %>% 
+  mutate(count_county_estab, 
+         it_budget_per_emp = IT_BUDGET/EMPLE,
+         emple_win = winsorize(EMPLE[count_county_estab>1]), 
+         reven_win = winsorize(REVEN), 
+         it_budget_win = winsorize(IT_BUDGET),
+         hard_budget_win = winsorize(HARDWARE_BUDGET),
+         software_budegt_win = winsorize(SOFTWARE_BUDGET),
+         service_budget_win = winsorize(SERVICES_BUDGET)) 
+```
+

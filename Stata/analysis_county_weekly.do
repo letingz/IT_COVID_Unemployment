@@ -12,7 +12,7 @@ local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 local filename "report_0510.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it_group "number_per_emp_Dev_mediun number_per_emp_Enterprise_mediun number_per_emp_Cloud_mediun number_per_emp_Database_mediun number_per_emp_WFH_mediun number_per_emp_Marketing_mediun number_per_emp_Security_mediun number_per_emp_Network_mediun"
+local it_group "number_per_emp_Dev_median number_per_emp_Enterprise_median number_per_emp_Cloud_median number_per_emp_Database_median number_per_emp_WFH_median number_per_emp_Marketing_median number_per_emp_Security_median number_per_emp_Network_median"
 
 **#  IT Budget
 est clear
@@ -75,7 +75,7 @@ esttab  _all using "`filename'", a keep(treat* 1.treat*#1.q4_high_it_budget_medi
 #delimit cr;
  est clear
  
- /* coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High IT Intensity on the Unemployment Rate", size(medium))  xlabel(, labsize(tiny))  coeflabels( 1.treatb5#1.q4_high_it_budget_median= "T-5" 1.treatb4#1.q4_high_it_budget_median= "T-4"  1.treatb3#1.q4_high_it_budget_median= "T-3" 1.treatb2#1.q4_high_it_budget_median= "T-2" 1.treatb1#1.q4_high_it_budget_median= "T-1" 1.treata0#1.q4_high_it_budget_median= "T=0" 1.treata1#1.q4_high_it_budget_median= "T+1" 1.treata2#1.q4_high_it_budget_median= "T+2" 1.treata3#1.q4_high_it_budget_median= "T+3" 1.treata4#1.q4_high_it_budget_median= "T+4" 1.treata5#1.q4_high_it_budget_median= "T+5" ) nolabel yline(0, lpattern(dash)) xline(6, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red)) */
+ /* coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High IT Intensity on the Unemployment Rate", size(median))  xlabel(, labsize(tiny))  coeflabels( 1.treatb5#1.q4_high_it_budget_median= "T-5" 1.treatb4#1.q4_high_it_budget_median= "T-4"  1.treatb3#1.q4_high_it_budget_median= "T-3" 1.treatb2#1.q4_high_it_budget_median= "T-2" 1.treatb1#1.q4_high_it_budget_median= "T-1" 1.treata0#1.q4_high_it_budget_median= "T=0" 1.treata1#1.q4_high_it_budget_median= "T+1" 1.treata2#1.q4_high_it_budget_median= "T+2" 1.treata3#1.q4_high_it_budget_median= "T+3" 1.treata4#1.q4_high_it_budget_median= "T+4" 1.treata5#1.q4_high_it_budget_median= "T+5" ) nolabel yline(0, lpattern(dash)) xline(6, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red)) */
 
  
 * ITS 
@@ -119,9 +119,15 @@ est clear
  
  * Heterogneity 1: demographics
  
+ local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local filename "report_06.rtf"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_group "number_per_emp_Dev_median number_per_emp_WFH_median number_per_emp_Network_median number_per_emp_Enterprise_median number_per_emp_Database_median number_per_emp_Security_median  number_per_emp_Cloud_median number_per_emp_Marketing_median  "
+ 
  est clear
  
-eststo:areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.internetper `con' i.week, absorb(county) rob
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.internetper `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
@@ -160,23 +166,212 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.
 
 est clear
 
-* Heterogneity 2: IT app groups
- 
- local starlevel "* 0.10 ** 0.05 *** 0.01"
+**# Heterogneity 2: IT app groups
+
+* Form 1: 8 columns 
+
+local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 local filename "report_0510.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it_group "number_per_emp_Dev_mediun number_per_emp_Enterprise_mediun number_per_emp_Cloud_mediun number_per_emp_Database_mediun number_per_emp_WFH_mediun number_per_emp_Marketing_mediun number_per_emp_Security_mediun number_per_emp_Network_mediun"
+local it_group "number_per_emp_Dev_median number_per_emp_WFH_median number_per_emp_Network_median number_per_emp_Enterprise_median number_per_emp_Database_median number_per_emp_Security_median  number_per_emp_Cloud_median number_per_emp_Marketing_median  "
 
+*************TODO CHANGE median -> MEDIAN
  
 foreach m of local  it_group {
 
-	areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
-	*eststo: areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
-	*estadd local tfixed "YES"
-	*estadd local hfixed "YES"
+	*areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	eststo: areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	estadd local tfixed "YES"
+	estadd local hfixed "YES"
 	}
+	
+	
+#delimit ;
+
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Dev_median
+										    1.tre#*1.q4_high_it_budget_median#c.number_per_emp_WFH_median
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Network_median
+
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Enterprise_median
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Database_median
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Security_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Cloud_median
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Marketing_median
+											
+											
+											
+											1.tre#c.number_per_emp_Dev_median
+											1.tre#c.number_per_emp_WFH_median
+											1.tre#c.number_per_emp_Network_median
+											
+											1.tre#c.number_per_emp_Enterprise_median
+											1.tre#c.number_per_emp_Database_median													
+											1.tre#c.number_per_emp_Security_median
+											
+											1.tre#c.number_per_emp_Cloud_median
+											1.tre#c.number_per_emp_Marketing_median
+								
+											
+											
+										    1.tre#1.q4_high_it_budget_median 
+											
+										       `con' )
+		title(6. )
+			order(tre 1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Dev_median
+										    1.tre#*1.q4_high_it_budget_median#c.number_per_emp_WFH_median
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Network_median
+
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Enterprise_median
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Database_median
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Security_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Cloud_median
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Marketing_median
+						
+												
+											1.tre#c.number_per_emp_Dev_median
+											1.tre#c.number_per_emp_WFH_median
+											1.tre#c.number_per_emp_Network_median
+											
+											1.tre#c.number_per_emp_Enterprise_median
+											1.tre#c.number_per_emp_Database_median													
+											1.tre#c.number_per_emp_Security_median
+											
+											1.tre#c.number_per_emp_Cloud_median
+											1.tre#c.number_per_emp_Marketing_median			
+											
+										    1.tre#1.q4_high_it_budget_median 
+											
+										     `con' 	)		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+
+
+* Form 2: 3 + 5 columns	
  
+ 
+ 
+local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local filename "report_0510.rtf"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_group_1 "number_per_emp_Dev_median number_per_emp_WFH_median number_per_emp_Network_median "
+local it_group_2 " number_per_emp_Enterprise_median number_per_emp_Database_median number_per_emp_Security_median  number_per_emp_Cloud_median number_per_emp_Marketing_median "
+
+*************TODO CHANGE median -> MEDIAN
+ 
+foreach m of local  it_group_1 {
+
+	*areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	eststo: areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	estadd local tfixed "YES"
+	estadd local hfixed "YES"
+	}
+	
+	
+#delimit ;
+
+esttab  _all using "`filename'", a keep(tre 1.tre#1.q4_high_it_budget_median 
+
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Dev_median
+											1.tre#c.number_per_emp_Dev_median
+											
+										    1.tre#*1.q4_high_it_budget_median#c.number_per_emp_WFH_median
+											1.tre#c.number_per_emp_WFH_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Network_median
+											1.tre#c.number_per_emp_Network_median										
+										       `con' )
+							title(6. )
+							order(tre 1.tre#1.q4_high_it_budget_median 
+
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Dev_median
+											1.tre#c.number_per_emp_Dev_median
+											
+										    1.tre#*1.q4_high_it_budget_median#c.number_per_emp_WFH_median
+											1.tre#c.number_per_emp_WFH_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Network_median
+											1.tre#c.number_per_emp_Network_median										
+										       `con' 	)		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+
+
+foreach m of local  it_group_2 {
+	
+	eststo: areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	estadd local tfixed "YES"
+	estadd local hfixed "YES"
+	}
+	
+#delimit ;	
+	
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median 
+
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Enterprise_median
+											1.tre#c.number_per_emp_Enterprise_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Database_median
+											1.tre#c.number_per_emp_Database_median	
+													
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Security_median
+											1.tre#c.number_per_emp_Security_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Cloud_median
+											1.tre#c.number_per_emp_Cloud_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Marketing_median					
+											1.tre#c.number_per_emp_Marketing_median											
+										       `con' )
+		title(6. )
+								order(tre 1.tre#*1.q4_high_it_budget_median 
+
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Enterprise_median
+											1.tre#c.number_per_emp_Enterprise_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Database_median
+											1.tre#c.number_per_emp_Database_median	
+													
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Security_median
+											1.tre#c.number_per_emp_Security_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Cloud_median
+											1.tre#c.number_per_emp_Cloud_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Marketing_median					
+											1.tre#c.number_per_emp_Marketing_median											
+										       `con' 	)		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear	
+	
+	
+
+
+
  
  * Telework & Com  (robustness)
  local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
@@ -196,7 +391,6 @@ eststo:areg initclaims_rate_regular tre tre##c.ln_its_emps tre##c.ln_com_emps  `
 estadd local tfixed "YES"
 estadd local hfixed "YES" 
  
-
 
 #delimit ;
 
