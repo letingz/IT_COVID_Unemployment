@@ -15,6 +15,9 @@ library(DataExplorer)
 library(tidyverse)
 library(bit64)
 library(robustHD)
+library(here)
+library(haven)
+library(kableExtra)
 
 ```
 
@@ -25,16 +28,18 @@ load("~/Covid-Cyber-Unemploy/0603weekly.RData")
 ```
 
 
-# County data summary 
+# Summarize county data- use plot missing 
 
-```{r Summarize main data}
+```{r Summarize main data and missing values}
 summary(county_week_panel)
 plot_missing(county_week_panel)
 plot_missing(county_month_panel)
 ```
 
-# Data Description
-```{r}
+
+# Create county-level statistics
+
+```{r Create statistics on IT budget & industry distribution& IT service employee }
 # Analyses on establishment in counties 
 
 # - County population - basic & IT statistics
@@ -55,9 +60,9 @@ county_pop_basic <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
          service_budget_win = ifelse(count_county_estab >1, winsorize(SERVICES_BUDGET), SERVICES_BUDGET)) %>% 
   summarise(count = n(), 
             across(EMPLE:it_budget_per_emp, mean, na.rm = TRUE, .names = "{col}_mean"), 
-            across(EMPLE:it_budget_per_emp, median, na.rm = TRUE, .names = "{col}_medium"),
+            across(EMPLE:it_budget_per_emp, median, na.rm = TRUE, .names = "{col}_median"),
             across(emple_win:service_budget_win, mean, na.rm = TRUE, .names = "{col}_mean"), 
-            across(emple_win:service_budget_win, mean, na.rm = TRUE, .names = "{col}_medium")) %>% 
+            across(emple_win:service_budget_win, median, na.rm = TRUE, .names = "{col}_median")) %>% 
   ungroup()
 
 
@@ -78,8 +83,6 @@ county_pop_industry <- ci_data_use  %>% select(SITEID, COUNTY, IT_BUDGET, EMPLE,
 
 # - County sample statistics  (sample used in analyses)
 
-
-  
 county_sample <-  county_week_panel %>% 
   select(countyfips, initclaims_rate_regular,  avg_new_death_rate, avg_new_case_rate, avg_median_home, IT_BUDGET_mean ) %>% 
   drop_na(c("countyfips", "initclaims_rate_regular",  "avg_new_death_rate", "avg_new_case_rate", "avg_median_home", "IT_BUDGET_mean")) %>% 
@@ -95,23 +98,118 @@ county_sample_industry <- county_sample %>%
 
 county_sample_stat <- county_sample_basic %>% left_join(county_sample_industry)
 
+county_sample_basic_win <- county_sample_stat %>% select(countyfips, count, contains("win") )
 
-demo <- county_sample_stat %>% left_join(county_qwi_agg %>% select(geography, its_emps_all), by = c( 'countyfips' = 'geography'))
+county_sample_basic_win_stat <- county_sample_basic_win %>%  left_join(county_sample_industry)
 
 
-
-
+county_sample_median_stat <- county_sample_basic_win %>% 
+                            select(!contains("mean")) %>% 
+                        left_join(county_sample_industry) %>% left_join(county_qwi_agg %>% select(geography, its_emps_all), by = c( 'countyfips' = 'geography'))
+                
 
 
 ```
 
+```{r Create statitistcs on county demographics & different types of IT}
+
+county_acs <- read.csv(here("1.Data", "2.intermediate_data", "county_demo.csv"))
+
+county_sample_acs <- county_sample %>% 
+              left_join(county_acs %>% 
+                       select(-X))
+
+ci_per_emp_county <- read_dta(here("1.Data", "3.output_data", "ci_per_emp_county.dta"))
+
+county_sample_ci <- county_sample %>% left_join(ci_per_emp_county, by = c('countyfips' = 'county')) 
+str(county_sample_ci)
+```
+
+
+# Sample Descriptive Analysis
+
+```{r Summary Statisitcs - IT budget & Industry, rows.print = 100}
+library(psych)
+
+df <- county_sample_median_stat %>% select(contains("median"))
+summary_table <- as.data.frame(psych::describe(df, fast = TRUE)) 
+summary_table %>% select(- c("vars", "n")) %>% kable(row.names = NULL)
+
+# tmp <- do.call(data.frame, 
+#            list(mean = apply(df, 2, function(x) mean(x, na.rm = T)),
+#                 sd = apply(df, 2, sd),
+#                 median = apply(df, 2, median),
+#                 min = apply(df, 2, min),
+#                 max = apply(df, 2, max),
+#                 n = apply(df, 2, length)))
+
+```
+
+
+
+```{r Summary Statisitcs - Demographics & IT groups, rows.print = 100}
+
+df <- county_sample_acs
+psych::describe(df, fast = TRUE)
+
+
+df <- county_sample_ci[, -c(1)]
+psych::describe(df)
+```
+
+```{r Combine above results and Create a nice table, rows.print = 100}
+demo <-county_sample_median_stat %>%
+      left_join(county_sample_acs) %>% 
+  left_join(county_sample_ci %>% select(!contains("Budget"))) %>% 
+      select(-c("count_total_est", "NON-CL", "meanincome")) %>% 
+      relocate(its_emps_all, .before = "AG-M-C") %>% 
+  `colnames<-`(c("County", "No. Establishment", "Employee", "Revenue", "IT Budget", "Hardware Budget",
+                 "Software Budget", "IT Service Budget", "IT Service Employees",
+                 "Agriculture", "Education", "Finance", "Government", "Manufracturing", "Medical", 
+                 "Service", "Transportation", "Wholsale", "Total Household", "Population", "Internet",
+                 "Household Income", "Dev", "Enter", "Cloud", "Database", "WFH","Marketing", "Security", "Network"))
+          
+          
+
+psych::describe(demo, fast = TRUE)
+
+#summary_table <- as.data.frame(psych::describe(demo, fast = TRUE)) 
+#summary_table %>% select(- c("vars", "n"))
+```
+
+
+
+
+# Creat correlation Matrix
 ```{r Correlation matrix}
 library(corrplot)
-cor<-rcorr(as.matrix(demo[,3:42]))
-cor_basic <- cor(demo[, c(3, 4, 5,38:42)], method = c("spearman"), use="complete.obs")
-corrplot(cor_basic)
+
+
+
+
+df <- demo %>% select(c(
+                 "Agriculture", "Education", "Finance", "Government", "Manufracturing", "Medical", 
+                 "Service", "Transportation", "Wholsale", "IT Budget", "Hardware Budget",
+                 "Software Budget", "IT Service Budget", "IT Service Employees"))
+
+corrplot(cor(df, method = c("spearman"), use="complete.obs"))
+
+
+df <- demo %>% select(c(
+                 "Agriculture", "Education", "Finance", "Government", "Manufracturing", "Medical", 
+                 "Service", "Transportation", "Wholsale",  "Dev", "Enter", "Cloud", "Database", "WFH","Marketing", "Security", "Network"))
+
+corrplot(cor(df, method = c("spearman"), use="complete.obs"))
 ```
 
+```{r}
+save(county_pop_basic, county_pop_industry, demo, county_sample_stat,
+     file = here(out_data_path, "var_correlation.rds") )
+```
+```{r}
+library(Hmisc)
+describe(county_sample_basic) %>% html()
+```
 
 
 # Comparison between three data sources
