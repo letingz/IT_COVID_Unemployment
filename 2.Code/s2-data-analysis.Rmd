@@ -18,7 +18,8 @@ library(robustHD)
 library(here)
 library(haven)
 library(kableExtra)
-
+library(modelsummary)
+library(flextable)
 ```
 
 
@@ -44,6 +45,7 @@ plot_missing(county_month_panel)
 
 # - County population - basic & IT statistics
 
+### = =  Median is not affected by winsorized or not. 
 county_pop_basic <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
                           IT_BUDGET, HARDWARE_BUDGET, 
                        SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
@@ -60,10 +62,10 @@ county_pop_basic <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
          service_budget_win = ifelse(count_county_estab >1, winsorize(SERVICES_BUDGET), SERVICES_BUDGET)) %>% 
   summarise(count = n(), 
             across(EMPLE:it_budget_per_emp, mean, na.rm = TRUE, .names = "{col}_mean"), 
-            across(EMPLE:it_budget_per_emp, median, na.rm = TRUE, .names = "{col}_median"),
-            across(emple_win:service_budget_win, mean, na.rm = TRUE, .names = "{col}_mean"), 
-            across(emple_win:service_budget_win, median, na.rm = TRUE, .names = "{col}_median")) %>% 
+            across(emple_win:service_budget_win, mean, na.rm = TRUE, .names = "{col}_mean"),
+            across(EMPLE:it_budget_per_emp, median, na.rm = TRUE, .names = "{col}_median")) %>% 
   ungroup()
+
 
 
 # - County population - Industry 
@@ -80,6 +82,13 @@ county_pop_industry <- ci_data_use  %>% select(SITEID, COUNTY, IT_BUDGET, EMPLE,
   spread(SICGRP,  per_sic)
   
   
+county_pop_median <- county_pop_basic %>% 
+                      select(!contains("mean")) %>% 
+                      left_join(county_pop_industry) %>% 
+                      left_join(county_qwi_agg %>% select(geography, its_emps_all), 
+                                                      by = c( 'COUNTY' = 'geography'))
+                    
+
 
 # - County sample statistics  (sample used in analyses)
 
@@ -98,14 +107,16 @@ county_sample_industry <- county_sample %>%
 
 county_sample_stat <- county_sample_basic %>% left_join(county_sample_industry)
 
-county_sample_basic_win <- county_sample_stat %>% select(countyfips, count, contains("win") )
+#county_sample_basic_win <- county_sample_stat %>% select(countyfips, count, contains("win") )
 
-county_sample_basic_win_stat <- county_sample_basic_win %>%  left_join(county_sample_industry)
+#county_sample_basic_win_stat <- county_sample_basic_win %>%  left_join(county_sample_industry)
 
 
-county_sample_median_stat <- county_sample_basic_win %>% 
+county_sample_median <- county_sample_basic %>% 
                             select(!contains("mean")) %>% 
-                        left_join(county_sample_industry) %>% left_join(county_qwi_agg %>% select(geography, its_emps_all), by = c( 'countyfips' = 'geography'))
+                        left_join(county_sample_industry) %>% 
+                        left_join(county_qwi_agg %>% select(geography, its_emps_all), 
+                                                      by = c( 'countyfips' = 'geography'))
                 
 
 
@@ -122,6 +133,7 @@ county_sample_acs <- county_sample %>%
 ci_per_emp_county <- read_dta(here("1.Data", "3.output_data", "ci_per_emp_county.dta"))
 
 county_sample_ci <- county_sample %>% left_join(ci_per_emp_county, by = c('countyfips' = 'county')) 
+
 str(county_sample_ci)
 ```
 
@@ -131,9 +143,15 @@ str(county_sample_ci)
 ```{r Summary Statisitcs - IT budget & Industry, rows.print = 100}
 library(psych)
 
+df <- county_pop_basic %>% select(contains("median"))
+psych::describe(df, fast = TRUE)[8:14,]
+
+
 df <- county_sample_median_stat %>% select(contains("median"))
-summary_table <- as.data.frame(psych::describe(df, fast = TRUE)) 
-summary_table %>% select(- c("vars", "n")) %>% kable(row.names = NULL)
+psych::describe(df, fast = TRUE)
+
+#summary_table <- as.data.frame(psych::describe(df, fast = TRUE)) 
+#summary_table %>% select(- c("vars", "n")) %>% kable(row.names = NULL)
 
 # tmp <- do.call(data.frame, 
 #            list(mean = apply(df, 2, function(x) mean(x, na.rm = T)),
@@ -142,6 +160,10 @@ summary_table %>% select(- c("vars", "n")) %>% kable(row.names = NULL)
 #                 min = apply(df, 2, min),
 #                 max = apply(df, 2, max),
 #                 n = apply(df, 2, length)))
+
+
+
+
 
 ```
 
@@ -175,16 +197,56 @@ psych::describe(demo, fast = TRUE)
 
 #summary_table <- as.data.frame(psych::describe(demo, fast = TRUE)) 
 #summary_table %>% select(- c("vars", "n"))
+
+
+str(county_pop_median)
 ```
 
+
+```{r Sample vs Population}
+
+sample_pop_diff <- county_pop_median  %>% 
+    select(-c("count_total_est" ) ) %>% 
+    left_join(county_sample %>% mutate(sample = 1), by = c("COUNTY" = "countyfips")) %>% 
+    mutate(sample = ifelse(is.na(sample), 0, sample)) %>% 
+    left_join(county_acs %>% 
+                       select(-X), by = c('COUNTY' = 'countyfips'))
+
+
+datasummary((`No. Establishments`= count)+
+            (`Employment`= EMPLE_median  )+
+            (`Revenue`= REVEN_median   )+
+            (`IT Budget`=IT_BUDGET_median)+
+            (`Hardware Budget`= HARDWARE_BUDGET_median) +
+            (`Software Budget` = SOFTWARE_BUDGET_median) +
+            (`Service Budget` = SERVICES_BUDGET_median) +
+            (`IT Services Employees` = its_emps_all ) + 
+            (`Agriculture, Mining, and Construction` = `AG-M-C` ) +
+            (`Education` = EDUC) +
+            (`Finance, Insurance, and Real Estate` = `F-I-RE`) +
+            (`Government` = GOVT) +
+            (`Manufacturing` = MANUF ) +
+            (`Medicine` = MED ) +
+            (`Services` = SVCS) +
+            (`Transportation and Utilities` = `TR-UTL`) +
+            (`Wholesale and Retailing` = `WHL-RT` ) +
+            (`Population` = population)+
+            (`Internet Coverage` = internetper )+
+            (`Household Income` = medianhouseholdincome) ~
+            (`Sample`=Factor(sample))*
+              (Mean+SD),
+            sparse_header = FALSE,
+            data=filter(sample_pop_diff), output = here("3.Report", "sample_population_compare.docx") )
+
+ #   "Software Budget", "IT Service Budget", "IT Service Employees",
+
+```
 
 
 
 # Creat correlation Matrix
 ```{r Correlation matrix}
 library(corrplot)
-
-
 
 
 df <- demo %>% select(c(
@@ -205,7 +267,9 @@ corrplot(cor(df, method = c("spearman"), use="complete.obs"))
 ```{r}
 save(county_pop_basic, county_pop_industry, demo, county_sample_stat,
      file = here(out_data_path, "var_correlation.rds") )
+
 ```
+
 ```{r}
 library(Hmisc)
 describe(county_sample_basic) %>% html()
@@ -256,7 +320,7 @@ outcome_summary_use <- county_outcome_summary %>%
 
 d1 <- county_outcome_summary %>% 
   summarise_at(2:5, mean, na.rm = TRUE ) %>% 
-  gather(desc, value, totalhousehold:medianhouseholdincome ) %>% 
+  gather(desc, value, totalhousehold:medianhouseholdincome) %>% 
   mutate(indicator = "pop")
 
 

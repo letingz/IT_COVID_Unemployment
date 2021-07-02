@@ -14,6 +14,15 @@ local filename "report_0510.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
 local it_group "number_per_emp_Dev_median number_per_emp_Enterprise_median number_per_emp_Cloud_median number_per_emp_Database_median number_per_emp_WFH_median number_per_emp_Marketing_median number_per_emp_Security_median number_per_emp_Network_median"
 
+
+
+***Correlation Matrx
+
+estpost correlate initclaims_rate_regular tre q4_high_it_budget_median  `con', matrix listwise
+est store c1
+esttab * using .\result\correlation.rtf, unstack not nostar noobs compress label replace
+esttab * using .\result\correlation_with_significance_level.rtf, unstack not noobs compress label replace
+
 **#  IT Budget
 est clear
 
