@@ -5,6 +5,9 @@
 
 data
 *.dta
+*.rtf
+*.doc
+
 *.Rproj
 analysis\output\
 1.Data
