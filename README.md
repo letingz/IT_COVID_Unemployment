@@ -1,7 +1,3 @@
-# COVID-Cyber-Unemployment study
+# IT Access and Unemployment in The COVID-19 Pandemic 
 
-
-##### 20200717
-
-TODO: Add description
-Geographic crosswalk files. http://mcdc.missouri.edu/applications/geocorr2018.html
+This repository is to track the changes in R and STATA scripts which are related to the project. 
