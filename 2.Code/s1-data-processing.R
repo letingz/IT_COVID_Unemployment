@@ -4,7 +4,6 @@
 # date: "04/22/2021"
 # input: Raw data
 # output: Panel data
-# status: NEXT: CI Winsorize
    
 
 ####### LOAD LIBRARY ########
@@ -20,19 +19,18 @@ library(haven)
 raw_data_path <- here("1.Data","1.raw_data")
 out_data_path <- here("1.Data","3.output_data")
 
+
+####### LOG  #######
+
+# 2021/07/27 create new measurements for IT budget: IT budget/emp, computer, computer/emp
+  # create industry measurement, firm size 
+
+
 ############# IMPORT & CLEAN DATA ###############
 
 ####### Import Economic Indicator - EconomicTracker ########
 
 #source: https://github.com/OpportunityInsights/EconomicTracker
-
-# Employment 
-
-employment_county <- read.csv(here(raw_data_path, "/EconomicTracker-main/data/Employment Combined - County - Daily.csv"))
-employment_state <- read.csv(here(raw_data_path,"/EconomicTracker-main/data/Employment Combined - State - Daily.csv"))
-
-employment_county <- employment_county%>% mutate_if(is.character,as.numeric)
-employment_state <- employment_state%>% mutate_if(is.character,as.numeric)
 
 
 # Unemployment Insurance Claim
@@ -42,6 +40,13 @@ ui_state <- read.csv(here(raw_data_path,"/EconomicTracker-main/data/UI Claims - 
 ui_county <- ui_county%>% mutate_if(is.character,as.numeric)
 ui_state <- ui_state%>% mutate_if(is.character,as.numeric)
 
+# Employment 
+
+employment_county <- read.csv(here(raw_data_path, "/EconomicTracker-main/data/Employment Combined - County - Daily.csv"))
+employment_state <- read.csv(here(raw_data_path,"/EconomicTracker-main/data/Employment Combined - State - Daily.csv"))
+
+employment_county <- employment_county%>% mutate_if(is.character,as.numeric)
+employment_state <- employment_state%>% mutate_if(is.character,as.numeric)
 
 # Other indicators
 
@@ -71,9 +76,9 @@ econ_state <- econ_state%>% mutate_if(is.character,as.numeric)
 ####### Import State/County Stay at Home - EconomicTracker ########
 
 #Source:  https://github.com/OpportunityInsights/EconomicTracker
+#Other Source: https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
 #National Emergency Concerning: March 13 
 #Reference: https://www.whitehouse.gov/presidential-actions/proclamation-declaring-national-emergency-concerning-novel-coronavirus-disease-covid-19-outbreak/
-#Other Source: https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
 #Reference: https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
 
 
@@ -122,13 +127,12 @@ policy_state_county <- policy_state_county %>% select(abb, FIPS, statepolicy_wee
                                                       statepolicy_date, countypolicy_date)
                   
 
-######## Import Covid19 from Eonomic Tracker ########
+######## Import Covid19 Data from Eonomic Tracker ########
 
 covid_county <- read.csv(here(raw_data_path, "EconomicTracker-main/data/COVID - County - Daily.csv"), stringsAsFactors = F)
 covid_state <- read.csv(here(raw_data_path, "EconomicTracker-main/data/COVID - State - Daily.csv"), stringsAsFactors = F)
 covid_county <- covid_county%>% mutate_if(is.character,as.numeric)
 covid_state<- covid_state%>% mutate_if(is.character,as.numeric)
-
 
 ######## Import & Clean: IT Workforce Data from QWI  ########
 
@@ -145,18 +149,13 @@ for (i in 1:length(qwifiles)) {
 }
 
 allqwidata <- rbindlist(f)
-#rm(f)
 
-
-# Choose IT related industry
-# extract state level and county level IT employment at 2019 Q4
-
-## industry code
+# Choose IT related industry - industry code
 its_industry = c(5112, 5191, 5182, 5415)
 computer_industry = c(3341, 3342, 3344, 3345, 5179)
 
 
-## State_level
+# Create measurement of state_level IT employment at 2019 Q4
 state_qwi_emp <- allqwidata  %>% 
   filter(geo_level=="S" ) %>% 
   select ( geography, year, quarter, industry, sex, education, Emp, EmpS,EmpTotal, EarnS, Payroll) 
@@ -217,8 +216,7 @@ state_qwi_agg <- state_qwi_emp_wide %>%
   ungroup()
 
 
-
-#County level 
+# Create measurement of county level IT employment at 2019 Q4
 
 county_qwi_emp <- allqwidata  %>% 
   filter(geo_level=="C" ) %>% 
@@ -235,45 +233,45 @@ county_qwi_agg <- county_qwi_emp_wide %>%
   summarise(
     # EMPS
     its_emps_all = sum(EmpSsex0educationE0[industry %in% its_industry], na.rm=T),
-    its_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
-    its_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
+    # its_emps_male = sum(EmpSsex1educationE0[industry %in% its_industry], na.rm=T),
+    # its_emps_female = sum(EmpSsex2educationE0[industry %in% its_industry], na.rm=T),
     
     com_emps_all = sum(EmpSsex0educationE0[industry %in% computer_industry],na.rm=T),
-    com_emps_male = sum(EmpSsex1educationE0[industry %in% computer_industry], na.rm=T),
-    com_emps_female = sum(EmpSsex2educationE0[industry %in% computer_industry], na.rm=T),
+    # com_emps_male = sum(EmpSsex1educationE0[industry %in% computer_industry], na.rm=T),
+    # com_emps_female = sum(EmpSsex2educationE0[industry %in% computer_industry], na.rm=T),
     
     
     all_emps_all = sum(EmpSsex0educationE0,na.rm=T),
-    all_emps_male = sum(EmpSsex1educationE0, na.rm=T),
-    all_emps_female = sum(EmpSsex2educationE0, na.rm=T),
-    
+    # all_emps_male = sum(EmpSsex1educationE0, na.rm=T),
+    # all_emps_female = sum(EmpSsex2educationE0, na.rm=T),
+    # 
     # EmpTotal
     
     its_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% its_industry], na.rm=T),
-    its_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% its_industry], na.rm=T),
-    its_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% its_industry], na.rm=T),
+    # its_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% its_industry], na.rm=T),
+    # its_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% its_industry], na.rm=T),
     
     com_empstotal_all = sum(EmpTotalsex0educationE0[industry %in% computer_industry],na.rm=T),
-    com_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% computer_industry], na.rm=T),
-    com_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% computer_industry], na.rm=T),
+    # com_empstotal_male = sum(EmpTotalsex1educationE0[industry %in% computer_industry], na.rm=T),
+    # com_empstotal_female = sum(EmpTotalsex2educationE0[industry %in% computer_industry], na.rm=T),
     
     all_empstotal_all = sum(EmpTotalsex0educationE0,na.rm=T),
-    all_empstotal_male = sum(EmpTotalsex1educationE0, na.rm=T),
-    all_empstotal_female = sum(EmpTotalsex2educationE0, na.rm=T),
+    # all_empstotal_male = sum(EmpTotalsex1educationE0, na.rm=T),
+    # all_empstotal_female = sum(EmpTotalsex2educationE0, na.rm=T),
     
     # Earn
     
     its_earn_all = sum(EarnSsex0educationE0[industry %in% its_industry], na.rm=T),
-    its_earn_male = sum(EarnSsex1educationE0[industry %in% its_industry], na.rm=T),
-    its_earn_female = sum(EarnSsex2educationE0[industry %in% its_industry], na.rm=T),
+    # its_earn_male = sum(EarnSsex1educationE0[industry %in% its_industry], na.rm=T),
+    # its_earn_female = sum(EarnSsex2educationE0[industry %in% its_industry], na.rm=T),
     
     com_earn_all = sum(EarnSsex0educationE0[industry %in% computer_industry],na.rm=T),
-    com_earn_male = sum(EarnSsex1educationE0[industry %in% computer_industry], na.rm=T),
-    com_earn_female = sum(EarnSsex2educationE0[industry %in% computer_industry], na.rm=T),
-    
+    # com_earn_male = sum(EarnSsex1educationE0[industry %in% computer_industry], na.rm=T),
+    # com_earn_female = sum(EarnSsex2educationE0[industry %in% computer_industry], na.rm=T),
+    # 
     all_earn_all = sum(EarnSsex0educationE0,na.rm=T),
-    all_earn_male = sum(EarnSsex1educationE0, na.rm=T),
-    all_earn_female = sum(EarnSsex2educationE0, na.rm=T),
+    # all_earn_male = sum(EarnSsex1educationE0, na.rm=T),
+    # all_earn_female = sum(EarnSsex2educationE0, na.rm=T),
     
   ) %>% 
   ungroup()
@@ -287,7 +285,7 @@ write.csv(state_qwi_agg,here(out_data_path , "state_qwi_agg.csv"))
 ######## Import & Clean: CI Database  ########
 ci_path <- "C:/Users/Leting/Documents/CI_Investment/1.Data/1.raw_data/USA_2019"
 
-# read CI cyber data
+# Import CI cyber data
 ci_cyber <- read.csv(here("1.Data/2.intermediate_data", "CI_cyber_use.csv"))
 ci_cyber <- subset(ci_cyber, select = c('SITEID','cyber_sum', 'IT_STAFF','PCS'))
 
@@ -299,7 +297,8 @@ path <- paste(ci_path, '/SiteDescription.TXT', sep = '')
 col <-  c('SITEID', 'PRIMARY_DUNS_NUMBER', 'COMPANY', 'CITY','STATE','ZIPCODE', 'MSA','EMPLE','REVEN','SALESFORCE','MOBILE_WORKERS','MOBILE_INTL', 'SICGRP', 'SICSUBGROUP')
 ci_site <- fread(path, select = col)
 
-# read CI app install presence data
+
+# Import CI app install presence data
 path <- paste(ci_path, '/PresenceInstall.TXT', sep = '')
 col <-  c('SITEID', 'VPN_PRES', 'IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES')
 ci_presence <- fread(path, select = col)
@@ -309,17 +308,21 @@ ci_presence[ci_presence == ""] <- 0
 ci_presence <- as.data.frame(ci_presence)
 ci_presence[, 2:6] <- sapply(ci_presence[, 2:6], as.numeric )
 
-# read CI IT spend data
+# Import CI IT spend data
 path <- paste(ci_path, '/ITSpend.TXT', sep = '')
 ci_itspend <- fread(path)
 
-
-# read 2019 IT group data (processed in HPC center "covid_tech_analyses.Rmd" )
+# Import 2019 IT group data (processed in HPC center "covid_tech_analyses.Rmd" )
 
 adopttech_19 <- readRDS("~/Covid-Cyber-Unemploy/1.Data/1.raw_data/adopttech_19_site_techgroup.rds")
 
+# TODO: Import CI site industry & employment data
 
+path <- paste(ci_path, '/SiteDescription.TXT', sep = '')
 
+col <-  c('SITEID', 'EMPLE', 'SIC4_CODE', 'SIC4_DESC', 'NAICS6_CODE', 'NAICS6_DESC')
+
+ci_industry <- fread(path, select = col)
 
 
 ####### Import Geo data & Geo crosswalk file #######
@@ -345,7 +348,6 @@ geoid <- read.csv(here(raw_data_path, "GeoIDs - County.csv"), stringsAsFactors =
 source(here("2.Code", "asc_api.R"))
 
 
-
 ####### Import CPS data from IPUMS #######
 
 #source: ipums
@@ -367,9 +369,6 @@ devtools::install_github("cmu-delphi/covidcast", ref = "main",
                          subdir = "R-packages/covidcast")
 
 library(covidcast)
-
-
-
 
 
 home_prop_7day <- suppressMessages(
@@ -438,12 +437,15 @@ restaurants_visit_prop <- suppressMessages(
 
 
 
-
 ############# AGGREGATE & CONSTRUCT ###############
 
 
 
 ############# Aggregate CI - COUNTY level data  #######
+
+### Add county indicators (1. median; 2. per emp) # drop MEAN 
+
+## Add county indicators 1. agg median
 
 # add county fips
 ci_data_key <- ci_site[, c("SITEID","ZIPCODE")]
@@ -457,106 +459,64 @@ ci_data_key <- merge(ci_data_key, msa_county, by.x = "COUNTY", by.y = "FIPS.Coun
 # merge
 
 ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>% 
+  full_join(ci_site) %>% 
   full_join(ci_cyber) %>% 
   full_join(ci_presence) %>% 
   full_join(ci_itspend) %>% 
-  full_join(ci_site)
+  left_join(adopttech_19 %>% select(!contains("per_emp"), -c(division, division_name, EMPLE,COUNTY)) )
 
+### Create county-level CI IT variables
 
-
-## CI IT budget construct variables
-
-demo <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
-                                                    IT_BUDGET, HARDWARE_BUDGET, 
-                                                    SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
-  filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
-  mutate(it_budget_per_emp = IT_BUDGET/EMPLE, it_budget_win =  winsorize(it_budget_per_emp) ) 
-
-# No winsorzied
-ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
-                          IT_BUDGET, HARDWARE_BUDGET, 
-                       SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+# Create no winsorzied measurements
+ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN, PCS,
+                          IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET,
+                          contains("number_app")) %>% 
   filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
   group_by(COUNTY) %>% 
-  mutate(it_budget_per_emp = IT_BUDGET/EMPLE ) %>% 
   summarise(count = n(), 
-            across(EMPLE:it_budget_per_emp, mean, na.rm = TRUE, .names = "{col}_mean"), 
-            across(EMPLE:it_budget_per_emp, median, na.rm = TRUE, .names = "{col}_medium"),
-            across(EMPLE:it_budget_per_emp, sum, na.rm =TRUE, .names = "{col}_sum" ) ) %>% 
-  mutate(across(ends_with("sum"), .fns = list( per_site = ~./count), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
+            #across(EMPLE:number_app_Network, mean, na.rm = TRUE, .names = "{col}_mean"), # create mean -ABONDON
+            across(EMPLE:number_app_Network, median, na.rm = TRUE, .names = "{col}_median")) #create median %>% 
   ungroup()
-  
-write.csv(ci_summarise_all, here("1.Data","2.intermediate_data", "ci_all_summary_data.csv"))               
+            
+  # create mean - this command is useful
+  # across(EMPLE:it_budget_per_emp, sum, na.rm =TRUE, .names = "{col}_sum" ) ) %>%  
+  # mutate(across(ends_with("sum"), .fns = list( per_site = ~./count), .names = "{col}_{fn}",na.rm = TRUE)
 
-## winsorize
-ci_sum_county_winsorize <- ci_data_use %>% select(SITEID, STATE, COUNTY,CBSA.Name, EMPLE, REVEN, MOBILE_WORKERS 
-                                                 ,cyber_sum,VPN_PRES,IDACCESS_SW_PRES,
-                                                 DBMS_PRES, DATAWAREHOUSE_SW_PRES, SECURITY_SW_PRES, PCS, IT_BUDGET, HARDWARE_BUDGET, 
-                                                 SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
-                                  filter(EMPLE != 0 &  IT_BUDGET !=0) %>% 
-                   mutate(emple_win = winsorize(EMPLE), 
-                           reven_win = winsorize(REVEN), 
-                            it_budget_win = winsorize(IT_BUDGET),
-                           hard_budget_win = winsorize(HARDWARE_BUDGET),
-                           software_budegt_win = winsorize(SOFTWARE_BUDGET),
-                            service_budget_win = winsorize(SERVICES_BUDGET))
+# Create winsorzied measurements - Abondon
 
 
-ci_mean_county <- ci_sum_county_winsorize %>%
-  filter(!is.na(COUNTY)) %>% 
-  group_by(COUNTY) %>% 
-  summarise_at(5:23, mean, na.rm = TRUE) %>% 
-  ungroup() %>% 
-  rename_with( .cols = 2:20, .fn = ~ paste0(.x, "_mean") )
-
-ci_sum_county_pre <- ci_sum_county_winsorize %>%
-  filter(!is.na(COUNTY)) %>% 
-  group_by(COUNTY) %>% 
-  summarise_at(5:23, sum, na.rm = TRUE) %>% 
-  ungroup() %>% 
-  left_join(county_demo[, c(1,3)], by = c("COUNTY"= "countyfips"))
-
-ci_percap_county <-  ci_sum_county_pre %>% 
-  mutate(across(- c(COUNTY, population), ~ ./ population)) %>% 
-  rename_with( .cols = 2:20, .fn = ~ paste0(.x, "_percap") )
-
-
-ci_county_all <- ci_mean_county %>% 
-              full_join(ci_mean_county) %>% 
-              full_join(ci_percap_county) %>% 
-              full_join(ci_sum_county_pre)
-
-ci_county_for_analyses <-  ci_mean_county %>% 
-                  full_join(ci_percap_county) %>% ci_percap_county %>% ci_sum_county_pre
-
-
-
-# Create variable_per_emp panel dataset
-
-
-ci_data_per_emp <- ci_data_use %>% select(SITEID, EMPLE, REVEN, PCS, IT_BUDGET, HARDWARE_BUDGET, 
+ci_data_per_emp <- ci_data_use %>% select(SITEID, COUNTY, EMPLE, REVEN, PCS, IT_BUDGET, HARDWARE_BUDGET, 
                        SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
                  filter(EMPLE != 0 &  IT_BUDGET !=0) %>%
-                 mutate(across(ends_with("BUDGET"), .fns = list( per_emp = ~./EMPLE), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
+                 mutate(pc_per_emp = PCS/EMPLE,
+                  across(ends_with("BUDGET"), .fns = list( per_emp = ~./EMPLE), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
                  select ( -c(ends_with("BUDGET"))) %>% 
                  left_join(adopttech_19) %>% 
-                 select(SITEID, EMPLE, REVEN, PCS, COUNTY, division, division_name, 
-                        ends_with("per_emp"), starts_with("number_app_per_emp_") )
+                 select(SITEID, COUNTY, ends_with("per_emp"), starts_with("number_app_per_emp_") )
 
-
-
-
-ci_per_emp_county <-  ci_data_per_emp %>% 
-                      group_by(COUNTY) %>% 
-                      summarise(across(IT_BUDGET_per_emp: number_app_per_emp_Network, median, 
-                                       na.rm = TRUE, .names = "{col}_mediun")) %>%
-                      ungroup() %>% 
-                      rename_at( .vars = vars(starts_with("number_app_per_emp_")), # reduce the length of name
-                       .funs = funs(gsub("_app", "", ., fixed = TRUE)) ) %>% 
-                      rename( county = COUNTY)
-
+ci_summarise_per_emp <-  ci_data_per_emp %>% 
+  group_by(COUNTY) %>% 
+  summarise(across(pc_per_emp: number_app_per_emp_Network, median, 
+                   na.rm = TRUE, .names = "{col}_median")) %>%
+  ungroup() %>% 
+  rename_at( .vars = vars(starts_with("number_app_per_emp_")), # reduce the length of name
+             .funs = funs(gsub("_app", "", ., fixed = TRUE)) ) 
     
-write_dta(ci_per_emp_county, here(out_data_path, "ci_per_emp_county.dta"))
+#write_dta(ci_per_emp_county, here(out_data_path, "ci_per_emp_county.dta"))
+
+
+ci_county_all <- ci_summarise_all %>%
+              full_join(ci_summarise_per_emp) %>% 
+              mutate_if(is.integer64, as.numeric)
+
+
+# merge industry 
+
+### TODO
+
+ci_industry_use <- ci_industry %>% 
+  left_join(ci_data_key %>% select(c("COUNTY", "SITEID")))
+
 
 ############# Aggregate and contruct county, weekly data #######
 
@@ -693,12 +653,12 @@ county_week_panel <- ui_county_week %>%
               full_join(policy_state_county, by = c("countyfips" = "FIPS")) %>% 
               full_join(county_qwi_use, by = c("countyfips" = "geography" )) %>% select(-c(year, geo_value))
 
-
+colnames()
 
 
 write.csv(county_week_panel, here(out_data_path, "county_week_panel.csv"))
 
-write_dta(county_week_panel, here("Stata", "county_week_panel.dta"))
+write_dta(county_week_panel, here("Stata", "county_week_panel_july.dta"))
 
 
 

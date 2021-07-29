@@ -15,6 +15,10 @@ local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
 local it_group "number_per_emp_Dev_median number_per_emp_Enterprise_median number_per_emp_Cloud_median number_per_emp_Database_median number_per_emp_WFH_median number_per_emp_Marketing_median number_per_emp_Security_median number_per_emp_Network_median"
 
 ** TODO. 1. use education level as one moderator
+** TODO. Other moderaors
+
+areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.emple_median `con' i.week, absorb(county) rob
+
 
 
 **#Correlation Matrx
@@ -173,6 +177,7 @@ test 1.tre#1.q4_high_it_budget_median 1.tre#1.q4_high_its_emps
 
 areg initclaims_rate_regular tre tre##c.ln_it_budget_median tre##c.ln_its_emps  `con' i.week, absorb(county) rob
 test  1.tre#c.ln_it_budget_median  1.tre#c.ln_its_emps
+
 
 
 
@@ -429,7 +434,9 @@ est clear
 	
 	
 
-
+ * Alternative model
+ **** NOT USE IT....Static or dynamic model, you can only choose one of them.
+xtabond2 initclaims_rate_regular L.initclaims_rate_regular tre tre##q4_high_it_budget_median  `con' i.week, gmm(initclaims_rate_regular,  lag(5 6) collapse eq(d)) gmm(`con', lag(2 3) collapse eq(d)) iv( tre tre##q4_high_it_budget_median i.week, eq(d)) rob two
 
  
  * Telework & Com  (robustness)

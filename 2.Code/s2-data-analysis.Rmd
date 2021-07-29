@@ -242,6 +242,33 @@ datasummary((`No. Establishments`= count)+
 
 ```
 
+```{r}
+
+datasummary((`No. Establishments`= count)+
+            (`Employment`= EMPLE_median  )+
+            (`Revenue`= REVEN_median   )+
+            (`IT Budget`=IT_BUDGET_median)+
+            (`Hardware Budget`= HARDWARE_BUDGET_median) +
+            (`Software Budget` = SOFTWARE_BUDGET_median) +
+            (`Service Budget` = SERVICES_BUDGET_median) +
+            (`IT Services Employees` = its_emps_all ) + 
+            (`Agriculture, Mining, and Construction` = `AG-M-C` ) +
+            (`Education` = EDUC) +
+            (`Finance, Insurance, and Real Estate` = `F-I-RE`) +
+            (`Government` = GOVT) +
+            (`Manufacturing` = MANUF ) +
+            (`Medicine` = MED ) +
+            (`Services` = SVCS) +
+            (`Transportation and Utilities` = `TR-UTL`) +
+            (`Wholesale and Retailing` = `WHL-RT` ) +
+            (`Population` = population)+
+            (`Internet Coverage` = internetper )+
+            (`Household Income` = medianhouseholdincome) ~
+            (`Sample`=Factor(sample))*
+              (Mean+SD),
+            sparse_header = FALSE,
+            data=filter(sample_pop_diff) )
+```
 
 
 # Creat correlation Matrix
