@@ -1,6 +1,6 @@
 .Rproj.user
 .Rhistory
-.RData
+*.RData
 .Ruserdata
 
 data
@@ -9,6 +9,11 @@ data
 *.doc
 *.docx
 *.Rproj
+Stata\archive\
+Stata\report\
+Stata\result\
+
+
 analysis\output\
 1.Data
 3.Report
