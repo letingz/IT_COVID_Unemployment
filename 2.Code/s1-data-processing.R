@@ -314,7 +314,11 @@ ci_itspend <- fread(path)
 
 # Import 2019 IT group data (processed in HPC center "covid_tech_analyses.Rmd" )
 
-adopttech_19 <- readRDS("~/Covid-Cyber-Unemploy/1.Data/1.raw_data/adopttech_19_site_techgroup.rds")
+#adopttech_19 <- readRDS("~/Covid-Cyber-Unemploy/1.Data/1.raw_data/adopttech_19_site_techgroup.rds")
+
+adopttech_19v2 <- readRDS(here(raw_data_path, "adopttech_19_site_techgroup_ver2.rds"))
+
+
 
 # TODO: Import CI site industry & employment data
 
@@ -463,9 +467,10 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
   full_join(ci_cyber) %>% 
   full_join(ci_presence) %>% 
   full_join(ci_itspend) %>% 
-  left_join(adopttech_19 %>% select(!contains("per_emp"), -c(division, division_name, EMPLE,COUNTY)) )
-
+  #left_join(adopttech_19 %>% select(!contains("per_emp"), -c(division, division_name, EMPLE,COUNTY)) )
+  left_join(adopttech_19v2 %>% select(!contains("per_emp"), -c(EMPLE, COUNTY, SIC3_CODE) ) )
 ### Create county-level CI IT variables
+
 
 # Create no winsorzied measurements
 ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN, PCS,
@@ -475,7 +480,7 @@ ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN, PCS,
   group_by(COUNTY) %>% 
   summarise(count = n(), 
             #across(EMPLE:number_app_Network, mean, na.rm = TRUE, .names = "{col}_mean"), # create mean -ABONDON
-            across(EMPLE:number_app_Network, median, na.rm = TRUE, .names = "{col}_median")) #create median %>% 
+            across(EMPLE:number_app_Infrastructure, median, na.rm = TRUE, .names = "{col}_median")) #create median %>% 
   ungroup()
             
   # create mean - this command is useful
@@ -491,12 +496,12 @@ ci_data_per_emp <- ci_data_use %>% select(SITEID, COUNTY, EMPLE, REVEN, PCS, IT_
                  mutate(pc_per_emp = PCS/EMPLE,
                   across(ends_with("BUDGET"), .fns = list( per_emp = ~./EMPLE), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
                  select ( -c(ends_with("BUDGET"))) %>% 
-                 left_join(adopttech_19) %>% 
+                 left_join(adopttech_19v2) %>% 
                  select(SITEID, COUNTY, ends_with("per_emp"), starts_with("number_app_per_emp_") )
 
 ci_summarise_per_emp <-  ci_data_per_emp %>% 
   group_by(COUNTY) %>% 
-  summarise(across(pc_per_emp: number_app_per_emp_Network, median, 
+  summarise(across(pc_per_emp: number_app_per_emp_Infrastructure, median, 
                    na.rm = TRUE, .names = "{col}_median")) %>%
   ungroup() %>% 
   rename_at( .vars = vars(starts_with("number_app_per_emp_")), # reduce the length of name
@@ -509,6 +514,15 @@ ci_county_all <- ci_summarise_all %>%
               full_join(ci_summarise_per_emp) %>% 
               mutate_if(is.integer64, as.numeric)
 
+# rename
+
+colnames(ci_county_all)[10:17] <- c("appdev_median", "enterp_median", "cloud_median", 
+                                    "productivity_median", "marketing_median", "collab_median",
+                                    "security_median", "infra_median")
+
+colnames(ci_county_all)[23:30] <- c("appdev_peremp_median", "enterp_peremp_median", "cloud_peremp_median", 
+                                    "productivity_peremp_median", "marketing_peremp_median", "collab_peremp_median",
+                                    "security_peremp_median", "infra_peremp_median")
 
 # merge industry 
 
@@ -540,7 +554,7 @@ employ_county_week <- employment_county %>%
   select(-c(year, month, day, date)) %>% 
   group_by(countyfips, week) %>% 
   summarise_at(vars(emp_combined:emp_combined_inchigh), mean, na.rm = TRUE) %>% ungroup()
-
+no
 
 # Econ: county, day -> county, month
 
@@ -653,12 +667,11 @@ county_week_panel <- ui_county_week %>%
               full_join(policy_state_county, by = c("countyfips" = "FIPS")) %>% 
               full_join(county_qwi_use, by = c("countyfips" = "geography" )) %>% select(-c(year, geo_value))
 
-colnames()
 
 
-write.csv(county_week_panel, here(out_data_path, "county_week_panel.csv"))
+write.csv(county_week_panel, here(out_data_path, "county_week_panel_aug.csv"))
 
-write_dta(county_week_panel, here("Stata", "county_week_panel_july.dta"))
+write_dta(county_week_panel, here("Stata", "county_week_panel_aug.dta"))
 
 
 
