@@ -25,16 +25,16 @@ xtset countyfips week
 
 rename countyfips county
 rename *, lower
-rename it_budget_county_win_mean it_budget_cwin_mean
+
+* rename it_budget_county_win_mean it_budget_cwin_mean
 
 **# Merge dataset
 
-
+drop _merge
 merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_demographic.dta"
 
 drop _merge
 merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\msa_teleworkable.dta"
-
 
 
 order abb, b(stayweek)
@@ -155,8 +155,6 @@ joinby county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county
 ** Continuous
 
 
-
-
 areg initclaims_rate_regular tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
 areg emp_combined tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
 areg initclaims_count_regular tre tre##c.its_emps_all_per_cap  tre##c.population  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
@@ -166,12 +164,9 @@ areg initclaims_rate_regular tre tre##c.its_emps_all_per_cap  avg_new_death_rate
 areg emp_combined tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
 
 
-
 * Binary
 
-
 areg initclaims_count_regular tre tre##c.q2_high_its_pop  tre##c.population  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
 areg emp_combined_incmiddle tre tre##c.q2_high_it_budget_pop avg_new_death_rate avg_new_case_rate gps_away_from_home i.week, absorb(county) rob
 areg emp_combined_inclow tre tre##c.q2_high_it_budget_pop avg_new_death_rate avg_new_case_rate gps_away_from_home i.week, absorb(county) rob /*?Problematic*/
 

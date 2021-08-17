@@ -433,10 +433,36 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median
 est clear	
 	
 	
+**# Synthetic Control 
+	
+* Select sample (has to be strongly balanced in terms of panel setting, dv, and predictor)	
+frame copy default synth
+frame change synth
+* keep county week month state tre initclaims_rate_regular avg_new_death_rate avg_new_case_rate avg_home_prop pattern synth population_per_cap internetper medianhouseholdincome
 
- * Alternative model
+keep county week month state tre treated initclaims_rate_regular avg_new_death_rate avg_new_case_rate avg_home_prop
+
+* Construct a strongly balanced sample
+drop if initclaims_rate_regular == .
+xtpatternvar, gen(pattern)
+drop if week>44
+by county: g N = _N
+table N
+drop if N<43
+xtset
+
+synth_runner initclaims_rate_regular avg_home_prop , d(treated)
+
+**# GMM Dynamic
  **** NOT USE IT....Static or dynamic model, you can only choose one of them.
-xtabond2 initclaims_rate_regular L.initclaims_rate_regular tre tre##q4_high_it_budget_median  `con' i.week, gmm(initclaims_rate_regular,  lag(5 6) collapse eq(d)) gmm(`con', lag(2 3) collapse eq(d)) iv( tre tre##q4_high_it_budget_median i.week, eq(d)) rob two
+ **** (Actually No ... YOU CAN USE BOTH MODELS - BY USING DIFFERENT ASSUMPTIONS)
+ 
+xtabond2 initclaims_rate_regular L.initclaims_rate_regular tre tre##q4_high_it_budget_median  `con' i.week, gmm(initclaims_rate_regular,  lag(5 6) collapse eq(d)) gmm(`con', lag(2 4) collapse eq(d)) iv( tre tre##q4_high_it_budget_median i.week, eq(d)) rob two
+
+
+
+xtabond2 initclaims_rate_regular L.initclaims_rate_regular tre tre##q4_high_it_budget_median  `con' i.week, gmm(initclaims_rate_regular,  lag(5 6) collapse eq(d)) gmm(`con', lag(2 4) collapse eq(d)) iv( tre tre##q4_high_it_budget_media  i.week) rob two
+
 
  
  * Telework & Com  (robustness)
