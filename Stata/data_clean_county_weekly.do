@@ -59,6 +59,7 @@ g treata`tau' = event == `tau'
 la var treata`tau' "This obs is `tau' years after the treatment"
 }
 
+g treated = tre*q4_high_it_budget_median
 
 * Month 
 recode week (2/5 = 1) (6/9 = 2) (10/14 = 3) (15/18 = 4) (19/22 = 5) (23/26 = 6) (27/30 = 7) (31/35 = 8) (36/40 = 9) (41/44 = 10) (45/49 = 11) (50/53 = 12), g(month)
@@ -76,16 +77,46 @@ g q2_high_`i' = (`i'_qtl > 2)
 
 
 * Log
+local logvar it_budget_median com_emps_all its_emps_all meanincome
+foreach i of local 
+
 g ln_com_emp = log( com_emps_all  + 1)
 g ln_its_emps = log( its_emps_all  + 1)
+g ln_it_budget_median = log(it_budget_median + 1)
+g ln_pop = log(population+1)
+
+
+*save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_week_panel_july_analysis.dta"
+save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_week_panel_aug_analysis.dta"
+
+
+labvars tre q4_high_it_budget_median q4_high_its_emps_all "After Stay at Home" "High IT Budget" "High ITS Employees"
+
+labvars initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop "Unemployment Count" "Unemployment Rate" "Employment Level"  "COVID Death Rate" "COVID New Case Rate" "Stay at Home Index"
+
+ 
+labvars appdev_peremp_median-infra_peremp_median "App Dev" "Enterprise App " "Cloud Solution" "Personal Productivity" "Digital Marketing/Commerce" "Collaboration" "Security" "Infrastructure"
+labvars appdev_median-infra_median "App Dev" "Enterprise App " "Cloud Solution" "Personal Productivity" "Digital Marketing/Commerce" "Collaboration" "Security" "Infrastructure"
 
 
 
 
-save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_week_panel_july_analysis.dta"
+// label variable number_per_emp_Enterprise_median "Enterprise apps"
+// label variable number_per_emp_Dev_mdedian "Dev apps"
+// label variable number_per_emp_Cloud_median "Cloud apps"
+// label variable number_per_emp_Database_median "Database apps"
+// label variable number_per_emp_WFH_median "WFH apps"
+// label variable number_per_emp_Marketing_median "Marketing apps"
+// label variable number_per_emp_Security_median "Security apps"
+// label variable number_per_emp_Network_median "Networks apps"
+ 
+* Adjecent county 
 
+use "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\adjacent_county_info.dta" 
+joinby county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_weekly_ui.dta", unmatched(none)
 
-----------------------------------
+ 
+---------------------------------
 areg initclaims_rate_regular tre tre##q4_high_its_emp_percap avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
 
 areg initclaims_rate_regular tre tre##q2_high_its_emp_percap|q4_high_it_budget_medium|q4_high_it_budget_per_emp_mean|tre#q2_high_it_budget_mean avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
@@ -114,41 +145,7 @@ foreach i of local var {
     
 	areg emp_combined_inclow tre tre##`i' `con' i.week, absorb(county) rob
 }
-
-**# Label 
-
-
-// local var 'initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop '
-// local label  '" "Unemployment Count" "Unemployment Rate" "Employment Level"  "COVID Death Rate" "COVID New Case Rate" "Stay at Home Index" '
-//
-// local n : word count `label'
-//
-// forvalues i = 1/`n' {
-//     local a: word `i' of `var'
-// 	local b: word `i' of `label'
-//     label var `a' "`b''"
-//	
-// }
-//
-
- labvars initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop "Unemployment Count" "Unemployment Rate" "Employment Level"  "COVID Death Rate" "COVID New Case Rate" "Stay at Home Index"
-
-
-label variable number_per_emp_Enterprise_median "Enterprise apps"
-label variable number_per_emp_Dev_mdedian "Dev apps"
-label variable number_per_emp_Cloud_median "Cloud apps"
-label variable number_per_emp_Database_median "Database apps"
-label variable number_per_emp_WFH_median "WFH apps"
-label variable number_per_emp_Marketing_median "Marketing apps"
-label variable number_per_emp_Security_median "Security apps"
-label variable number_per_emp_Network_median "Networks"
-label variable number_per_emp_Network_median "Networks apps"
  
-* Adjecent county 
-
-use "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\adjacent_county_info.dta" 
-joinby county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_weekly_ui.dta", unmatched(none)
-
  
 ** Table 1: Main analyses
 
@@ -187,6 +184,22 @@ areg emp_combined tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_ca
 q4_high_it_budget_medium 
 q2_high_it_budget_medium
 
+
+**# Label 
+
+
+// local var 'initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop '
+// local label  '" "Unemployment Count" "Unemployment Rate" "Employment Level"  "COVID Death Rate" "COVID New Case Rate" "Stay at Home Index" '
+//
+// local n : word count `label'
+//
+// forvalues i = 1/`n' {
+//     local a: word `i' of `var'
+// 	local b: word `i' of `label'
+//     label var `a' "`b''"
+//	
+// }
+//
 
 
 **#Experiment 

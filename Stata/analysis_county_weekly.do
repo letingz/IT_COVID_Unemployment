@@ -12,7 +12,7 @@ local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 local filename "result/report_07.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it_group "number_per_emp_Dev_median number_per_emp_Enterprise_median number_per_emp_Cloud_median number_per_emp_Database_median number_per_emp_WFH_median number_per_emp_Marketing_median number_per_emp_Security_median number_per_emp_Network_median"
+local it_group appdev_median-infra_median 
 
 ** TODO. 1. use education level as one moderator
 ** TODO. Other moderaors
@@ -39,13 +39,13 @@ eststo:areg initclaims_rate_regular tre tre##c.ln_it_budget_median `con' i.week,
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
-eststo:areg initclaims_count_regular tre tre##q4_high_it_budget_median tre##c.ln_pop `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
-eststo:areg initclaims_count_regular tre tre##c.ln_it_budget_median tre##c.ln_pop `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
+// eststo:areg initclaims_count_regular tre tre##q4_high_it_budget_median tre##c.ln_pop `con' i.week, absorb(county) rob
+// estadd local tfixed "YES"
+// estadd local hfixed "YES"
+//
+// eststo:areg initclaims_count_regular tre tre##c.ln_it_budget_median tre##c.ln_pop `con' i.week, absorb(county) rob
+// estadd local tfixed "YES"
+// estadd local hfixed "YES"
 
 #delimit ;
 
@@ -97,13 +97,14 @@ local filename "report_0510.rtf"
 est clear
 
 
-eststo: areg initclaims_rate_regular tre tre##q4_high_its_emps  `con' i.week, absorb(county) rob
+eststo: areg initclaims_rate_regular tre tre##q4_high_its_emps_all  `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
 eststo: areg initclaims_rate_regular tre tre##c.ln_its_emps  `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
+/*
 
 eststo: areg initclaims_count_regular tre tre##q4_high_its_emps tre##c.ln_pop `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
@@ -113,6 +114,7 @@ eststo: areg initclaims_count_regular tre  tre##c.ln_its_emps tre##c.ln_pop `con
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 	
+*/
 	
 #delimit ;
 
@@ -137,7 +139,7 @@ local filename "result/report_07.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
 local it_group "number_per_emp_Dev_median number_per_emp_WFH_median number_per_emp_Network_median number_per_emp_Enterprise_median number_per_emp_Database_median number_per_emp_Security_median  number_per_emp_Cloud_median number_per_emp_Marketing_median  "
 
-eststo: areg initclaims_rate_regular tre tre##q4_high_it_budget_median  tre tre##q4_high_its_emps `con' i.week, absorb(county) rob
+eststo: areg initclaims_rate_regular tre tre##q4_high_it_budget_median tre##q4_high_its_emps_all `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
@@ -146,7 +148,7 @@ eststo: areg initclaims_rate_regular tre tre##c.ln_it_budget_median tre##c.ln_it
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
-eststo: areg initclaims_rate_regular tre tre##q4_high_it_budget_median##q4_high_its_emps `con' i.week, absorb(county) rob
+eststo: areg initclaims_rate_regular tre tre##q4_high_it_budget_median##q4_high_its_emps_all `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
@@ -172,7 +174,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median 1.
 est clear
 
 
-areg initclaims_rate_regular tre tre##q4_high_it_budget_median  tre tre##q4_high_its_emps `con' i.week, absorb(county) rob
+areg initclaims_rate_regular tre tre##q4_high_it_budget_median  tre tre##q4_high_its_emps_all `con' i.week, absorb(county) rob
 test 1.tre#1.q4_high_it_budget_median 1.tre#1.q4_high_its_emps
 
 areg initclaims_rate_regular tre tre##c.ln_it_budget_median tre##c.ln_its_emps  `con' i.week, absorb(county) rob
@@ -238,9 +240,20 @@ local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 local filename "report_0510.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it_group "number_per_emp_Dev_median number_per_emp_WFH_median number_per_emp_Network_median number_per_emp_Enterprise_median number_per_emp_Database_median number_per_emp_Security_median  number_per_emp_Cloud_median number_per_emp_Marketing_median  "
+local it_group "appdev_median enterp_median cloud_median productivity_median marketing_median collab_median security_median infra_median"
 
 *************TODO CHANGE median -> MEDIAN
+
+
+foreach m of local  it_group {
+
+	*areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	eststo: areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	estadd local tfixed "YES"
+	estadd local hfixed "YES"
+	}
+
+
  
 foreach m of local  it_group {
 
@@ -324,14 +337,192 @@ est clear
  
  
  
+
+
+ * Updated moderating analyses
+ 
+ 
+ * All results
+ 
 local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 local filename "report_0510.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it_group_1 "number_per_emp_Dev_median number_per_emp_WFH_median number_per_emp_Network_median "
-local it_group_2 " number_per_emp_Enterprise_median number_per_emp_Database_median number_per_emp_Security_median  number_per_emp_Cloud_median number_per_emp_Marketing_median "
+local it_group "appdev_median enterp_median cloud_median productivity_median marketing_median collab_median security_median infra_median"
+local it_group2 "appdev_peremp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median"
+ 
+foreach m of local it_group{
 
-*************TODO CHANGE median -> MEDIAN
+	*areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	eststo: areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	estadd local tfixed "YES"
+	estadd local hfixed "YES"
+	}
+	
+	
+#delimit ;
+
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.appdev_median
+										    1.tre#*1.q4_high_it_budget_median#c.enterp_median
+											1.tre#*1.q4_high_it_budget_median#c.cloud_median
+
+											1.tre#*1.q4_high_it_budget_median#c.productivity_median
+											1.tre#*1.q4_high_it_budget_median#c.marketing_median
+											1.tre#*1.q4_high_it_budget_median#c.collab_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.security_median
+											1.tre#*1.q4_high_it_budget_median#c.infra_median
+											
+											
+											
+											1.tre#c.appdev_median
+											1.tre#c.enterp_median
+											1.tre#c.cloud_median
+											
+											1.tre#c.productivity_median
+											1.tre#c.marketing_median													
+											1.tre#c.collab_median
+											
+											1.tre#c.security_median
+											1.tre#c.infra_median
+								
+											
+											
+										    1.tre#1.q4_high_it_budget_median 
+											
+										       `con' )
+		title(6. )
+			order(tre 1.tre#*1.q4_high_it_budget_median#c.appdev_median
+										    1.tre#*1.q4_high_it_budget_median#c.enterp_median
+											1.tre#*1.q4_high_it_budget_median#c.cloud_median
+
+											1.tre#*1.q4_high_it_budget_median#c.productivity_median
+											1.tre#*1.q4_high_it_budget_median#c.marketing_median
+											1.tre#*1.q4_high_it_budget_median#c.collab_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.security_median
+											1.tre#*1.q4_high_it_budget_median#c.infra_median
+											
+											
+											
+											1.tre#c.appdev_median
+											1.tre#c.enterp_median
+											1.tre#c.cloud_median
+											
+											1.tre#c.productivity_median
+											1.tre#c.marketing_median													
+											1.tre#c.collab_median
+											
+											1.tre#c.security_median
+											1.tre#c.infra_median
+								
+											
+											
+										    1.tre#1.q4_high_it_budget_median 
+											
+										     `con' 	)		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+ 
+ 
+  
+local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local filename "report_0510.rtf"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_group2 "appdev_peremp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median"
+ 
+foreach m of local it_group2{
+
+	*areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	eststo: areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	estadd local tfixed "YES"
+	estadd local hfixed "YES"
+	}
+	
+	
+#delimit ;
+
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.appdev_peremp_median
+										    1.tre#*1.q4_high_it_budget_median#c.enterp_peremp_median
+											1.tre#*1.q4_high_it_budget_median#c.cloud_peremp_median
+
+											1.tre#*1.q4_high_it_budget_median#c.productivity_peremp_median
+											1.tre#*1.q4_high_it_budget_median#c.marketing_peremp_median
+											1.tre#*1.q4_high_it_budget_median#c.collab_peremp_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.security_peremp_median
+											1.tre#*1.q4_high_it_budget_median#c.infra_peremp_median
+											
+											
+											
+											1.tre#c.appdev_peremp_median
+											1.tre#c.enterp_peremp_median
+											1.tre#c.cloud_peremp_median
+											
+											1.tre#c.productivity_peremp_median
+											1.tre#c.marketing_peremp_median													
+											1.tre#c.collab_peremp_median
+											
+											1.tre#c.security_peremp_median
+											1.tre#c.infra_median
+								
+											
+											
+										    1.tre#1.q4_high_it_budget_median 
+											
+										       `con' )
+		title(6. )
+			order(tre 1.tre#*1.q4_high_it_budget_median#c.appdev_peremp_median
+										    1.tre#*1.q4_high_it_budget_median#c.enterp_peremp_median
+											1.tre#*1.q4_high_it_budget_median#c.cloud_peremp_median
+
+											1.tre#*1.q4_high_it_budget_median#c.productivity_peremp_median
+											1.tre#*1.q4_high_it_budget_median#c.marketing_peremp_median
+											1.tre#*1.q4_high_it_budget_median#c.collab_peremp_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.security_peremp_median
+											1.tre#*1.q4_high_it_budget_median#c.infra_peremp_median
+											
+											
+											
+											1.tre#c.appdev_peremp_median
+											1.tre#c.enterp_peremp_median
+											1.tre#c.cloud_peremp_median
+											
+											1.tre#c.productivity_peremp_median
+											1.tre#c.marketing_peremp_median													
+											1.tre#c.collab_peremp_median
+											
+											1.tre#c.security_peremp_median
+											1.tre#c.infra_median
+								
+											
+											
+										    1.tre#1.q4_high_it_budget_median 
+											
+										       `con'	)		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+ 
+ 
+ 
+ 
+ * Two forms
  
 foreach m of local  it_group_1 {
 
@@ -433,6 +624,86 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median
 est clear	
 	
 	
+
+
+
+
+
+local it_group "appdev_median enterp_median cloud_median productivity_median marketing_median collab_median security_median infra_median "
+local it_group_peremp "appdev_peremp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median "
+
+
+foreach m of local  it_group {
+	
+	eststo: areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+	estadd local tfixed "YES"
+	estadd local hfixed "YES"
+	}
+	
+#delimit ;	
+	
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median 
+
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Enterprise_median
+											1.tre#c.number_per_emp_Enterprise_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Database_median
+											1.tre#c.number_per_emp_Database_median	
+													
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Security_median
+											1.tre#c.number_per_emp_Security_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Cloud_median
+											1.tre#c.number_per_emp_Cloud_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Marketing_median					
+											1.tre#c.number_per_emp_Marketing_median											
+										       `con' )
+		title(6. )
+								order(tre 1.tre#*1.q4_high_it_budget_median 
+
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Enterprise_median
+											1.tre#c.number_per_emp_Enterprise_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Database_median
+											1.tre#c.number_per_emp_Database_median	
+													
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Security_median
+											1.tre#c.number_per_emp_Security_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Cloud_median
+											1.tre#c.number_per_emp_Cloud_median
+											
+											1.tre#*1.q4_high_it_budget_median#c.number_per_emp_Marketing_median					
+											1.tre#c.number_per_emp_Marketing_median											
+										       `con' 	)		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear	
+	
+
+
+
+
+
+local it_group_peremp " hardware_budget_per_emp_median software_budget_per_emp_median services_budget_per_emp_median appdev_peremp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median "
+
+foreach m of local it_group_peremp {
+       areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+}
+
+local it_group " appdev_peremp_median-infra_peremp_median "
+foreach m of local it_group {
+       areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+}
+
+	
 **# Synthetic Control 
 	
 * Select sample (has to be strongly balanced in terms of panel setting, dv, and predictor)	
@@ -452,6 +723,10 @@ drop if N<43
 xtset
 
 synth_runner initclaims_rate_regular avg_home_prop , d(treated)
+effect_graphs
+pval_graphs
+
+
 
 **# GMM Dynamic
  **** NOT USE IT....Static or dynamic model, you can only choose one of them.

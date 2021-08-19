@@ -312,6 +312,16 @@ ci_presence[, 2:6] <- sapply(ci_presence[, 2:6], as.numeric )
 path <- paste(ci_path, '/ITSpend.TXT', sep = '')
 ci_itspend <- fread(path)
 
+# Convert interger64 to numeric 
+is.integer64 <- function(x){
+  class(x)=="integer64"
+}
+
+ci_itspend <- ci_itspend %>% 
+  mutate_if(is.integer64, as.numeric)
+
+
+
 # Import 2019 IT group data (processed in HPC center "covid_tech_analyses.Rmd" )
 
 #adopttech_19 <- readRDS("~/Covid-Cyber-Unemploy/1.Data/1.raw_data/adopttech_19_site_techgroup.rds")
