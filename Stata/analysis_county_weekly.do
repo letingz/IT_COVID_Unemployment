@@ -717,10 +717,18 @@ keep county week month state tre treated initclaims_rate_regular avg_new_death_r
 drop if initclaims_rate_regular == .
 xtpatternvar, gen(pattern)
 drop if week>44
-by county: g N = _N
+bys county: g N = _N
 table N
 drop if N<43
 xtset
+
+
+
+synth_runner initclaims_rate_regular avg_home_prop(10(1)13)  initclaims_rate_regular(10(1)13) , d(treated)
+
+*flacturate p value
+synth_runner initclaims_rate_regular avg_home_prop  initclaims_rate_regular(9(1)12) , d(treated) 
+
 
 synth_runner initclaims_rate_regular avg_home_prop , d(treated)
 effect_graphs
@@ -735,10 +743,11 @@ pval_graphs
 xtabond2 initclaims_rate_regular L.initclaims_rate_regular tre tre##q4_high_it_budget_median  `con' i.week, gmm(initclaims_rate_regular,  lag(5 6) collapse eq(d)) gmm(`con', lag(2 4) collapse eq(d)) iv( tre tre##q4_high_it_budget_median i.week, eq(d)) rob two
 
 
-
 xtabond2 initclaims_rate_regular L.initclaims_rate_regular tre tre##q4_high_it_budget_median  `con' i.week, gmm(initclaims_rate_regular,  lag(5 6) collapse eq(d)) gmm(`con', lag(2 4) collapse eq(d)) iv( tre tre##q4_high_it_budget_media  i.week) rob two
 
-
+synth_runner initclaims_rate_regular avg_home_prop(9(1)13)  initclaims_rate_regular(9(1)13) , d(treated)
+effect_graphs
+pval_graphs
  
  * Telework & Com  (robustness)
  local con "avg_new_death_rate avg_new_case_rate avg_home_prop"

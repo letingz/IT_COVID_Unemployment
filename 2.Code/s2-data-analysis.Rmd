@@ -5,6 +5,14 @@ date: "5/1/2021"
 output: html_document
 ---
 
+```{r}
+# Descriptive analyses
+# Sample & Correlation visualization
+# 
+```
+
+
+
 ```{r Load library}
 library(ggplot2)
 library(socviz)
@@ -46,6 +54,8 @@ plot_missing(county_month_panel)
 # - County population - basic & IT statistics
 
 ### = =  Median is not affected by winsorized or not. 
+
+
 county_pop_basic <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
                           IT_BUDGET, HARDWARE_BUDGET, 
                        SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
@@ -68,7 +78,8 @@ county_pop_basic <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
 
 
 
-# - County population - Industry 
+# - County population - Industry
+
 county_pop_industry <- ci_data_use  %>% select(SITEID, COUNTY, IT_BUDGET, EMPLE, SICGRP ) %>% 
   filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
   group_by(COUNTY) %>% 
@@ -88,7 +99,6 @@ county_pop_median <- county_pop_basic %>%
                       left_join(county_qwi_agg %>% select(geography, its_emps_all), 
                                                       by = c( 'COUNTY' = 'geography'))
                     
-
 
 # - County sample statistics  (sample used in analyses)
 
@@ -116,26 +126,33 @@ county_sample_median <- county_sample_basic %>%
                             select(!contains("mean")) %>% 
                         left_join(county_sample_industry) %>% 
                         left_join(county_qwi_agg %>% select(geography, its_emps_all), 
-                                                      by = c( 'countyfips' = 'geography'))
+                                                      by = c( 'countyfips' = 'geography')) 
                 
 
-
-```
-
-```{r Create statitistcs on county demographics & different types of IT}
+# Add ACS data
 
 county_acs <- read.csv(here("1.Data", "2.intermediate_data", "county_demo.csv"))
-
 county_sample_acs <- county_sample %>% 
               left_join(county_acs %>% 
                        select(-X))
 
-ci_per_emp_county <- read_dta(here("1.Data", "3.output_data", "ci_per_emp_county.dta"))
+county_sample_median <- county_sample_median %>% 
+  left_join(county_acs %>% select(-X))
 
-county_sample_ci <- county_sample %>% left_join(ci_per_emp_county, by = c('countyfips' = 'county')) 
+county_pop_median <- county_pop_median %>% 
+  left_join(county_acs %>% rename("COUNTY" = "countyfips")%>%  select(-X))
 
-str(county_sample_ci)
+
+
+
+#ci_per_emp_county <- read_dta(here("1.Data", "3.output_data", "ci_per_emp_county.dta"))
+#county_sample_ci <- county_sample %>% left_join(ci_per_emp_county, by = c('countyfips' = 'county')) 
+
+
+
 ```
+
+
 
 
 # Sample Descriptive Analysis
@@ -162,12 +179,7 @@ psych::describe(df, fast = TRUE)
 #                 n = apply(df, 2, length)))
 
 
-
-
-
 ```
-
-
 
 ```{r Summary Statisitcs - Demographics & IT groups, rows.print = 100}
 
@@ -191,59 +203,18 @@ demo <-county_sample_median_stat %>%
                  "Service", "Transportation", "Wholsale", "Total Household", "Population", "Internet",
                  "Household Income", "Dev", "Enter", "Cloud", "Database", "WFH","Marketing", "Security", "Network"))
           
-          
 
 psych::describe(demo, fast = TRUE)
 
-#summary_table <- as.data.frame(psych::describe(demo, fast = TRUE)) 
-#summary_table %>% select(- c("vars", "n"))
-
-
-str(county_pop_median)
 ```
 
 
-```{r Sample vs Population}
+```{r Sample vs Population - Mean, sd, p-value}
+sample_pop_diff <- county_pop_median %>% 
+  mutate(sample = 0) %>% 
+  bind_rows(county_sample_median %>% mutate(sample = 1) %>% rename("COUNTY" = "countyfips"))
 
-sample_pop_diff <- county_pop_median  %>% 
-    select(-c("count_total_est" ) ) %>% 
-    left_join(county_sample %>% mutate(sample = 1), by = c("COUNTY" = "countyfips")) %>% 
-    mutate(sample = ifelse(is.na(sample), 0, sample)) %>% 
-    left_join(county_acs %>% 
-                       select(-X), by = c('COUNTY' = 'countyfips'))
-
-
-datasummary((`No. Establishments`= count)+
-            (`Employment`= EMPLE_median  )+
-            (`Revenue`= REVEN_median   )+
-            (`IT Budget`=IT_BUDGET_median)+
-            (`Hardware Budget`= HARDWARE_BUDGET_median) +
-            (`Software Budget` = SOFTWARE_BUDGET_median) +
-            (`Service Budget` = SERVICES_BUDGET_median) +
-            (`IT Services Employees` = its_emps_all ) + 
-            (`Agriculture, Mining, and Construction` = `AG-M-C` ) +
-            (`Education` = EDUC) +
-            (`Finance, Insurance, and Real Estate` = `F-I-RE`) +
-            (`Government` = GOVT) +
-            (`Manufacturing` = MANUF ) +
-            (`Medicine` = MED ) +
-            (`Services` = SVCS) +
-            (`Transportation and Utilities` = `TR-UTL`) +
-            (`Wholesale and Retailing` = `WHL-RT` ) +
-            (`Population` = population)+
-            (`Internet Coverage` = internetper )+
-            (`Household Income` = medianhouseholdincome) ~
-            (`Sample`=Factor(sample))*
-              (Mean+SD),
-            sparse_header = FALSE,
-            data=filter(sample_pop_diff), output = here("3.Report", "sample_population_compare.docx") )
-
- #   "Software Budget", "IT Service Budget", "IT Service Employees",
-
-```
-
-```{r}
-
+# Copy the table directly is better than export
 datasummary((`No. Establishments`= count)+
             (`Employment`= EMPLE_median  )+
             (`Revenue`= REVEN_median   )+
@@ -268,13 +239,66 @@ datasummary((`No. Establishments`= count)+
               (Mean+SD),
             sparse_header = FALSE,
             data=filter(sample_pop_diff) )
+
+ #   "Software Budget", "IT Service Budget", "IT Service Employees",
+
+```
+
+```{r Sample vs pop - visulization }
+
+#install.packages("rstatix")
+
+library(rstatix)
+library(ggpubr)
+
+sample_pop_long <-  sample_pop_diff%>% 
+  pivot_longer(-c(COUNTY, sample), names_to = "variable", values_to = "value" )
+
+t.test <- sample_pop_long  %>% 
+  group_by(variable) %>% 
+  t_test(value~sample) %>% 
+  adjust_pvalue(method = "BH") %>% 
+  add_significance()
+
+write.csv(t.test, here("3.Report", "samplepopttest.csv")) # use this stat in table 
+```
+
+```{r}
+
+sample_pop_long  %>%
+  filter(variable %in% c("count", "EMPLE_median", "IT_BUDGET_median", "SOFTWARE_BUDGET_median", "SERVICES_BUDGET_median", "its_emps_all ", "REVEN_median") ) %>% 
+  ggplot(aes(x = value , fill = factor(sample)) ) +
+    geom_density(alpha=0.3) + scale_x_log10() + facet_wrap(~variable, scales = "free") + theme_bw()
+
+
+sample_pop_long  %>%
+  filter(variable %in% c("AG-M-C", "EDUC", "F-I-RE", "GOVT", "MANUF", "MED", "SVCS", "TR-UTL", "WHL-RT") ) %>% 
+  ggplot(aes(x = value , fill = factor(sample)) ) +
+    geom_density(alpha=0.3) + scale_x_log10() + facet_wrap(~variable, scales = "free") +  theme_bw()
+
+
+
+
+sample_pop_long  %>%
+  filter(variable %in% c("population", "internetper","totalhousehold",  "medianhouseholdincome") ) %>% 
+  ggplot(aes(x = value , fill = factor(sample)) ) +
+    geom_density(alpha=0.3) + scale_x_log10() + facet_wrap(~variable, scales = "free") +  theme_bw()
 ```
 
 
-# Creat correlation Matrix
+
+```{r}
+ttest <- sample_pop_diff %>% 
+  pivot_longer(-c(COUNTY,sample), names_to = "var", values_to = "value") %>% 
+  arrange(COUNTY, sample)
+  
+```
+
+
+# Create correlation Matrix
+
 ```{r Correlation matrix}
 library(corrplot)
-
 
 df <- demo %>% select(c(
                  "Agriculture", "Education", "Finance", "Government", "Manufracturing", "Medical", 
@@ -301,6 +325,7 @@ save(county_pop_basic, county_pop_industry, demo, county_sample_stat,
 library(Hmisc)
 describe(county_sample_basic) %>% html()
 ```
+
 
 
 # Comparison between three data sources
@@ -403,4 +428,10 @@ summary_outcome %>% filter(desc == "population")  %>% ggplot(aes( x = indicator 
 
 ```
 
+
+# Synthetic Control
+
+```{r}
+
+```
 

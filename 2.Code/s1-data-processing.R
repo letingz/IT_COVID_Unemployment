@@ -134,6 +134,7 @@ covid_state <- read.csv(here(raw_data_path, "EconomicTracker-main/data/COVID - S
 covid_county <- covid_county%>% mutate_if(is.character,as.numeric)
 covid_state<- covid_state%>% mutate_if(is.character,as.numeric)
 
+
 ######## Import & Clean: IT Workforce Data from QWI  ########
 
 # Import 
