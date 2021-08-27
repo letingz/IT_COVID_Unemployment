@@ -20,7 +20,6 @@ local it_group appdev_median-infra_median
 areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.emple_median `con' i.week, absorb(county) rob
 
 
-
 **#Correlation Matrx
 
 estpost correlate initclaims_rate_regular tre q4_high_it_budget_median q4_high_its_emps ln_it_budget_median  ln_its_emps  `con', matrix listwise
@@ -189,7 +188,7 @@ test  1.tre#c.ln_it_budget_median  1.tre#c.ln_its_emps
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 local filename "report_06.rtf"
 local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it_group "number_per_emp_Dev_median number_per_emp_WFH_median number_per_emp_Network_median number_per_emp_Enterprise_median number_per_emp_Database_median number_per_emp_Security_median  number_per_emp_Cloud_median number_per_emp_Marketing_median  "
+
  
  est clear
  
@@ -198,7 +197,7 @@ estadd local tfixed "YES"
 estadd local hfixed "YES"
 
  
-eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps##c.internetper `con' i.week, absorb(county) rob
+eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps_all##c.internetper `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
@@ -206,7 +205,7 @@ eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.ln_inco
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
-eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps##c.ln_income `con' i.week, absorb(county) rob
+eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps_all##c.ln_income `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
 
@@ -702,6 +701,26 @@ local it_group " appdev_peremp_median-infra_peremp_median "
 foreach m of local it_group {
        areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
 }
+
+
+
+**# Heterogneity test 3 industry 
+
+
+* Hard to explain
+  
+local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local filename "report_0510.rtf"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local industry "AG_M_C EDUC F_I_RE GOVT MANUF MED SVCS TR_UTL WHL_RT"
+ 
+foreach m of local industry{
+	
+	areg initclaims_rate_regular tre tre## q4_high_it_budget_median##c.`m' `con' i.week, absorb(county) rob
+
+	}
+
 
 	
 **# Synthetic Control 

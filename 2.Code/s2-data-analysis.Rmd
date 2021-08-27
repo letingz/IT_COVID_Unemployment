@@ -432,6 +432,133 @@ summary_outcome %>% filter(desc == "population")  %>% ggplot(aes( x = indicator 
 # Synthetic Control
 
 ```{r}
+install.packages('gsynth', type = 'source')
+library(gsynth)
 
+```
+```{r}
+
+data(gsynth)
+ls()
+
+```
+
+```{r}
+head(simdata)
+```
+
+```{r}
+library(panelView)
+```
+
+```{r}
+panelView(Y ~ D, data = simdata,  index = c("id","time"), pre.post = TRUE) 
+```
+
+```{r}
+panelView(Y ~ D, data = simdata,  index = c("id","time"), type = "outcome") 
+```
+
+```{r}
+system.time(
+    out <- gsynth(Y ~ D + X1 + X2, data = simdata, index = c("id","time"), force = "two-way", CV = TRUE, r = c(0, 5), se = TRUE, inference = "parametric", nboots = 1000, parallel = FALSE)
+)
+```
+
+```{r}
+print(out)
+out$est.att
+out$est.avg
+out$est.beta
+```
+```{r}
+plot(out)
+```
+```{r}
+plot(out, theme.bw = FALSE) 
+```
+
+```{r}
+plot(out, type = "gap", ylim = c(-3,12), xlab = "Period", main = "My GSynth Plot")
+```
+```{r}
+plot(out, type = "raw")
+```
+```{r}
+plot(out,type = "raw", legendOff = TRUE, ylim=c(-10,40), main="")
+```
+
+```{r}
+plot(out, type = "counterfactual", raw = "none", main="")
+```
+```{r}
+plot(out, type = "ct", raw = "none", main = "", shade.post = FALSE)
+```
+```{r}
+plot(out, type = "counterfactual", raw = "band", xlab = "Time", ylim = c(-5,35))
+```
+
+```{r}
+plot(out, type = "counterfactual", raw = "all")
+```
+
+```{r}
+plot(out, type = "loadings")
+```
+
+```{r }
+library(readstata13)
+
+panel_use <-read.dta13(here("Stata", "county_week_panel_aug_analysis.dta"))
+
+
+```
+
+
+
+```{r}
+
+panelView(initclaims_rate_regular ~ treated, data = panel_use,  index = c("county", "week"), pre.post = TRUE, by.timing = TRUE)
+```
+
+```{r}
+
+panelView(initclaims_rate_regular ~ treated , data = panel_use,  index = c("county", "week"),type  = "outcome", main = "EDR Reform and Turnout", by.group = TRUE)
+
+```
+
+
+
+```{r}
+
+demo <- panel_use %>% filter(!is.na(initclaims_rate_regular) & !is.na(avg_home_prop) & !is.na( avg_new_death_rate) &!is.na(avg_new_case_rate)) %>% 
+                      filter(!is.na())
+
+out <- gsynth(initclaims_rate_regular ~  treated + avg_home_prop +  avg_new_death_rate + avg_new_case_rate  , data = demo,  index = c("county", "week"), se = TRUE, inference = "nonparametric", r = c(0, 4), CV = TRUE, force = "two-way", nboots = 1000, min.T0 = 6,  seed = 02139)
+```
+
+
+```{r}
+plot(out)
+```
+```{r}
+plot(out, type = "counterfactual", raw = "none", main="")
+```
+
+```{r}
+plot(out, type = "ct", raw = "none", main = "", shade.post = FALSE)
+```
+
+
+```{r}
+
+plot(out, type = "counterfactual", raw = "band", xlab = "Time", ylim = c(0,4))
+
+```
+
+
+
+```{r}
+plot(out, type = "counterfactual", raw = "all")
 ```
 

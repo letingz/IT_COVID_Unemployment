@@ -36,7 +36,6 @@ merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\cou
 drop _merge
 merge m:1 county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\msa_teleworkable.dta"
 
-
 order abb, b(stayweek)
 rename abb state
 order avg_new_case_count avg_new_death_rate avg_new_case_rate avg_home_prop avg_work_prop avg_median_home, a( emp_combined_inchigh )
@@ -44,6 +43,13 @@ order gps_away_from_home, b(spend_all)
 order spend_all, b(merchants_all)
 order teleworkable_manual_emp teleworkable_manual_wage teleworkable_emp teleworkable_wage, a( gps_residential )
 order population, b(totalhousehold)
+
+
+* Add industry data
+drop _merge
+merge m:1 county using "C:\Users\Leting\Documents\2.Covid_IT_Employment\Stata\county_industry.dta"
+
+
 
 **# Generate variables
 

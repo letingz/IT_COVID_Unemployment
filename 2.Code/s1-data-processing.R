@@ -829,3 +829,16 @@ write.csv(county_month_panel, here(out_data_path, "county_month_panel.csv"))
 write.csv(state_month_panel, here(out_data_path, "state_month_panel.csv"))
 
 #write_dta(county_month_panel, here("Stata", "county_month_panel.dta"))
+
+
+
+demo <- county_sample_industry %>% select(-c(`NON-CL`))
+
+colnames(demo)[1] <- "county"
+colnames(demo)[3] <- "AG_M_C"
+colnames(demo)[5] <- "F_I_RE"
+colnames(demo)[10] <- "TR_UTL"
+colnames(demo)[11] <- "WHL_RT"
+
+write_dta(demo, here("Stata", "county_industry.dta"))
+
