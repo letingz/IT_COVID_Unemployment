@@ -832,6 +832,9 @@ write.csv(state_month_panel, here(out_data_path, "state_month_panel.csv"))
 
 
 
+
+
+
 demo <- county_sample_industry %>% select(-c(`NON-CL`))
 
 colnames(demo)[1] <- "county"

@@ -51,6 +51,16 @@ merge m:1 county using "C:\Users\Leting\Documents\2.Covid_IT_Employment\Stata\co
 
 
 
+* Quantile
+
+local itquan it_budget_median it_budget_per_emp_median pcs_median pc_per_emp_median its_emps_all its_empstotal_all com_emps_all
+foreach i of local itquan {
+xtile `i'_qtl = `i', nq(4)
+g q4_high_`i' = (`i'_qtl == 4)
+g q2_high_`i' = (`i'_qtl > 2)
+}
+
+
 **# Generate variables
 
 * Event indicator
@@ -65,21 +75,24 @@ g treata`tau' = event == `tau'
 la var treata`tau' "This obs is `tau' years after the treatment"
 }
 
+label variable treatb4 "T-4"
+label variable treatb5 "T-5"
+label variable treatb3 "T-4"
+label variable treatb3 "T-3"
+label variable treatb2 "T-2"
+label variable treatb1 "T-1"
+label variable treata0 "T=0"
+label variable treata1 "T+1"
+label variable treata2 "T+2"
+label variable treata3 "T+3"
+label variable treata4 "T+4"
+label variable treata5 "T+5"
+
 g treated = tre*q4_high_it_budget_median
 
 * Month 
 recode week (2/5 = 1) (6/9 = 2) (10/14 = 3) (15/18 = 4) (19/22 = 5) (23/26 = 6) (27/30 = 7) (31/35 = 8) (36/40 = 9) (41/44 = 10) (45/49 = 11) (50/53 = 12), g(month)
 order month, a(week)
-
-
-* Quantile
-
-local itquan it_budget_median it_budget_per_emp_median pcs_median pc_per_emp_median its_emps_all its_empstotal_all com_emps_all
-foreach i of local itquan {
-xtile `i'_qtl = `i', nq(4)
-g q4_high_`i' = (`i'_qtl == 4)
-g q2_high_`i' = (`i'_qtl > 2)
-}
 
 
 * Log
@@ -104,10 +117,6 @@ labvars initclaims_count_regular initclaims_rate_regular emp_combined avg_new_de
 labvars appdev_peremp_median-infra_peremp_median "App Dev" "Enterprise App " "Cloud Solution" "Personal Productivity" "Digital Marketing/Commerce" "Collaboration" "Security" "Infrastructure"
 labvars appdev_median-infra_median "App Dev" "Enterprise App " "Cloud Solution" "Personal Productivity" "Digital Marketing/Commerce" "Collaboration" "Security" "Infrastructure"
 
-
-rename appdev_peremp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median
-
-rename appdev_peremp_median appdev_emp_median
 
 
  
@@ -140,7 +149,7 @@ areg initclaims_count_regular tre tre##q2_high_it_budget_medium tre##c.populatio
 areg emp_combined tre tre##q4_high_it_budget_percap avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
 
 areg emp_combined tre tre##q4_high_it_budget_mean  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
+1
 
 local it " q4_high_it_budget_mean q2_high_it_budget_mean q4_high_it_budget_per_emp_mean q2_high_it_budget_per_emp_mean q4_high_it_budget_medium q2_high_it_budget_medium "
 foreach i of local it {
@@ -196,6 +205,18 @@ q2_high_it_budget_medium
 
 
 **# Label 
+
+
+label variable ln_it_budget_median "IT Budget"
+
+label variable ln_its_emps "IT Services Employees"
+
+
+label variable internetper "Internet Coverage"
+
+label variable ln_income "Household Income"
+
+
 
 
 // local var 'initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop '

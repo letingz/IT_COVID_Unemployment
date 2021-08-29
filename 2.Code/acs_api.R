@@ -118,5 +118,36 @@ county_demo <- df_acs1 %>% filter(name %in% c("internetper", "meanincome", "medi
 
 
 write.csv(county_demo, here("1.Data", "2.intermediate_data", "county_demo.csv"))
-  
-       
+
+
+county_addition <- 
+
+
+county_addition <- df_acs1 %>% filter(name %in% c("highschoolhigherper", "bachelorhigherper", "computerper",
+                                                  "agriculture", "construction", "manufacturing", "wholesale", 
+                                                  "retail", "transportation", "information", "insurance")) %>% 
+                                select(-GEOID) %>% 
+                                pivot_wider(
+                                  names_from =name,
+                                  values_from = c(estimate)
+                                ) %>% 
+                          rename( "county" = "countyfips")
+
+
+library(haven)
+library(here)
+
+write_dta(county_addition, here("1.Data", "2.intermediate_data", "county_addition(edu_industry).dta"))
+
+
+
+
+
+
+
+
+
+
+
+
+

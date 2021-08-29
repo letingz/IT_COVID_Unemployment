@@ -21,7 +21,6 @@ global output 1
 
 
 
-
 ** TODO. 1. use education level as one moderator
 
 
@@ -33,6 +32,8 @@ esttab * using .\result\correlation.rtf, unstack not nostar noobs compress label
 esttab * using .\result\correlation_with_significance_level.rtf, unstack not noobs compress label replace
 
 **#  IT Budget
+
+
 est clear
 
 eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median  `con' i.week, absorb(county) rob
@@ -42,6 +43,15 @@ estadd local hfixed "YES"
 eststo:areg initclaims_rate_regular tre tre##c.ln_it_budget_median `con' i.week, absorb(county) rob
 estadd local tfixed "YES"
 estadd local hfixed "YES"
+
+eststo: areg initclaims_rate_regular tre tre##q4_high_its_emps_all  `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo: areg initclaims_rate_regular tre tre##c.ln_its_emps  `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+	
 
 // eststo:areg initclaims_count_regular tre tre##q4_high_it_budget_median tre##c.ln_pop `con' i.week, absorb(county) rob
 // estadd local tfixed "YES"
@@ -53,8 +63,8 @@ estadd local hfixed "YES"
 
 #delimit ;
 
-esttab  _all using "`filename'", replace keep(tre 1.tre#*1.q4_high_it_budget_median 1.tre#c.ln_it_budget_median  1.tre#c.ln_pop  `con')
-		order(tre 1.tre#*1.q4_high_it_budget_median 1.tre#c.ln_it_budget_median  1.tre#c.ln_pop  `con')
+esttab  _all using "`filename'", replace keep(tre 1.tre#1.q4_high_it_budget_median 1.tre#c.ln_it_budget_median  1.tre#1.q4_high_its_emps_all 1.tre#c.ln_its_emps  `con')
+		order(tre 1.tre#1.q4_high_it_budget_median 1.tre#c.ln_it_budget_median  1.tre#1.q4_high_its_emps_all 1.tre#c.ln_its_emps  `con')
 		title(1. )
 		label stat( r2 N df_a tfixed hfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
@@ -95,34 +105,34 @@ esttab  _all using "`filename'", a keep(treat* 1.treat*#1.q4_high_it_budget_medi
  
  /* coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High IT Intensity on the Unemployment Rate", size(median))  xlabel(, labsize(tiny))  coeflabels( 1.treatb5#1.q4_high_it_budget_median= "T-5" 1.treatb4#1.q4_high_it_budget_median= "T-4"  1.treatb3#1.q4_high_it_budget_median= "T-3" 1.treatb2#1.q4_high_it_budget_median= "T-2" 1.treatb1#1.q4_high_it_budget_median= "T-1" 1.treata0#1.q4_high_it_budget_median= "T=0" 1.treata1#1.q4_high_it_budget_median= "T+1" 1.treata2#1.q4_high_it_budget_median= "T+2" 1.treata3#1.q4_high_it_budget_median= "T+3" 1.treata4#1.q4_high_it_budget_median= "T+4" 1.treata5#1.q4_high_it_budget_median= "T+5" ) nolabel yline(0, lpattern(dash)) xline(6, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red)) */
 
- 
-**# County- IT service employees 
-local filename "report_0510.rtf"
-est clear
-
-
-eststo: areg initclaims_rate_regular tre tre##q4_high_its_emps_all  `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
-eststo: areg initclaims_rate_regular tre tre##c.ln_its_emps  `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-	
-#delimit ;
-
-esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_its_emps_all 1.tre#*c.ln_its_emps 1.tre#c.ln_pop `con'  )
-		title(3. )
-		order(tre 1.tre#*1.q4_high_its_emps_all 1.tre#*c.ln_its_emps 1.tre#c.ln_pop `con' )
-		label stat( r2 N df_a tfixed hfixed,
-		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
-		 b(3) nogap onecell 
-		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
-		starlevels( `starlevel') se ;
-	
-#delimit cr;
-
-est clear
+// 
+// **# County- IT service employees 
+// local filename "report_0510.rtf"
+// est clear
+//
+//
+// eststo: areg initclaims_rate_regular tre tre##q4_high_its_emps_all  `con' i.week, absorb(county) rob
+// estadd local tfixed "YES"
+// estadd local hfixed "YES"
+//
+// eststo: areg initclaims_rate_regular tre tre##c.ln_its_emps  `con' i.week, absorb(county) rob
+// estadd local tfixed "YES"
+// estadd local hfixed "YES"
+//	
+// #delimit ;
+//
+// esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_its_emps_all 1.tre#*c.ln_its_emps 1.tre#c.ln_pop `con'  )
+// 		title(3. )
+// 		order(tre 1.tre#*1.q4_high_its_emps_all 1.tre#*c.ln_its_emps 1.tre#c.ln_pop `con' )
+// 		label stat( r2 N df_a tfixed hfixed,
+// 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+// 		 b(3) nogap onecell 
+// 		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+// 		starlevels( `starlevel') se ;
+//	
+// #delimit cr;
+//
+// est clear
 
 
 
@@ -135,65 +145,12 @@ est clear
 
 
 
-**# Heterogneity 1: demographics
- 
-local starlevel "* 0.10 ** 0.05 *** 0.01"
-local starnote "*** p<0.01, ** p<0.05, * p<0.1"
-*local filename "report_06new.rtf"
-local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+**# Heterogneity 1: IT app groups
 
  
- est clear
- 
-eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.internetper `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
 
- 
-eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps_all##c.internetper `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
+local it_group "appdev_peremp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median"
 
-eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.ln_income `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
-eststo:areg initclaims_rate_regular tre tre##q4_high_its_emps_all##c.ln_income `con' i.week, absorb(county) rob
-estadd local tfixed "YES"
-estadd local hfixed "YES"
-
-
-#delimit ;
-
-esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#1.q4_high_its_emps_all#c.internetper
-							1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_its_emps_all#c.ln_income
-										 1.tre#1.q4_high_it_budget_median 1.tre#*1.q4_high_its_emps_all
-										1.tre#c.ln_income 1.tre#c.internetper  `con' )
-		title(6. )
-		order(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#1.q4_high_its_emps_all#c.internetper
-							1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_its_emps_all#c.ln_income
-										 1.tre#1.q4_high_it_budget_median 1.tre#*1.q4_high_its_emps_all
-										 1.tre#c.internetper  1.tre#c.ln_income  `con')		
-		label stat( r2 N df_a tfixed hfixed,
-		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
-		 b(3) nogap onecell 
-		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
-		starlevels( `starlevel') se ;
-	
-#delimit cr;
-
-est clear
-
-**# Heterogneity 2: IT app groups
-
- 
-local starlevel "* 0.10 ** 0.05 *** 0.01"
-local starnote "*** p<0.01, ** p<0.05, * p<0.1"
-local filename "report_aaaa.rtf"
-local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it_group "appdev_emp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median"
-*local it_group "appdev_median enterp_median cloud_median productivity_median marketing_median collab_median security_median infra_median"
- 
 
 
  
@@ -208,7 +165,7 @@ foreach m of local it_group{
 	
 #delimit ;
 
-esttab  _all using "`filename'", a keep(tre //1.tre#*1.q4_high_it_budget_median#c.appdev_emp_median
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.appdev_peremp_median
 										    1.tre#*1.q4_high_it_budget_median#c.enterp_peremp_median
 											1.tre#*1.q4_high_it_budget_median#c.cloud_peremp_median
 
@@ -238,7 +195,7 @@ esttab  _all using "`filename'", a keep(tre //1.tre#*1.q4_high_it_budget_median#
 											
 										       `con' )
 		title(6. )
-			order(tre  						//1.tre#*1.q4_high_it_budget_median#c.appdev_emp_median
+			order(tre  						1.tre#*1.q4_high_it_budget_median#c.appdev_peremp_median
 										    1.tre#*1.q4_high_it_budget_median#c.enterp_peremp_median
 											1.tre#*1.q4_high_it_budget_median#c.cloud_peremp_median
 
@@ -279,7 +236,120 @@ est clear
  
 
 
+**# Heterogneity 2: skill-level
+ 
 
+ 
+ est clear
+ 
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.internetper `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.ln_income `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.bachelorhigherper `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+
+
+#delimit ;
+
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_it_budget_median#c.bachelorhigherper
+										     1.tre#1.q4_high_it_budget_median 1.tre#c.internetper  1.tre#c.ln_income 1.tre#c.bachelorhigherper  `con')
+		title(6. )
+		order(tre 1.tre#*1.q4_high_it_budget_median#c.internetper 1.tre#*1.q4_high_it_budget_median#c.ln_income 1.tre#*1.q4_high_it_budget_median#c.bachelorhigherper
+										     1.tre#1.q4_high_it_budget_median 1.tre#c.internetper  1.tre#c.ln_income 1.tre#c.bachelorhigherper  `con' )		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+ 
+ 
+**# Heterogneity 3: industry composition 
+ 
+ 
+est clear
+ 
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.agriculture `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.construction `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.manufacturing `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.wholesale `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.retail `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.transportation `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.information `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+eststo:areg initclaims_rate_regular tre tre##q4_high_it_budget_median##c.insurance `con' i.week, absorb(county) rob
+estadd local tfixed "YES"
+estadd local hfixed "YES"
+
+
+#delimit ;
+
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.q4_high_it_budget_median#c.agriculture 1.tre#*1.q4_high_it_budget_median#c.construction 
+											1.tre#*1.q4_high_it_budget_median#c.manufacturing 1.tre#*1.q4_high_it_budget_median#c.wholesale 
+											1.tre#*1.q4_high_it_budget_median#c.wholesale 1.tre#*1.q4_high_it_budget_median#c.retail
+											1.tre#*1.q4_high_it_budget_median#c.transportation 1.tre#*1.q4_high_it_budget_median#c.information
+											1.tre#*1.q4_high_it_budget_median#c.insurance
+											
+											1.tre#c.agriculture 1.tre#c.construction 
+											1.tre#c.manufacturing 1.tre#c.wholesale 
+											1.tre#c.wholesale 1.tre#c.retail
+											1.tre#c.transportation 1.tre#c.information
+											1.tre#c.insurance 
+											
+											`con' )
+		title(6. )
+		order(tre tre 1.tre#*1.q4_high_it_budget_median#c.agriculture 1.tre#*1.q4_high_it_budget_median#c.construction 
+											1.tre#*1.q4_high_it_budget_median#c.manufacturing 1.tre#*1.q4_high_it_budget_median#c.wholesale 
+											1.tre#*1.q4_high_it_budget_median#c.wholesale 1.tre#*1.q4_high_it_budget_median#c.retail
+											1.tre#*1.q4_high_it_budget_median#c.transportation 1.tre#*1.q4_high_it_budget_median#c.information
+											1.tre#*1.q4_high_it_budget_median#c.insurance
+											
+											1.tre#c.agriculture 1.tre#c.construction 
+											1.tre#c.manufacturing 1.tre#c.wholesale 
+											1.tre#c.wholesale 1.tre#c.retail
+											1.tre#c.transportation 1.tre#c.information
+											1.tre#c.insurance  `con' )		
+		label stat( r2 N df_a tfixed hfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week FE" "County FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("Notes: Robust standard errors are in parentheses" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+ 
+ 
 
 
 if $output == 0 {
