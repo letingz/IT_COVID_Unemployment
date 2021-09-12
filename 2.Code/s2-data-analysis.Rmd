@@ -33,7 +33,7 @@ library(flextable)
 
 
 ```{r Load data}
-load("~/Covid-Cyber-Unemploy/0603weekly.RData")
+load("~/2. Covi_IT_Unemploy/0603weekly.RData")
 ```
 
 
@@ -77,6 +77,11 @@ county_pop_basic <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
   ungroup()
 
 
+county_pop_median <- county_pop_basic %>% 
+                      select(!contains("mean")) %>% 
+                      left_join(county_pop_industry) %>% 
+                      left_join(county_qwi_agg %>% select(geography, its_emps_all), 
+                                                      by = c( 'COUNTY' = 'geography'))
 
 # - County population - Industry
 
@@ -93,12 +98,6 @@ county_pop_industry <- ci_data_use  %>% select(SITEID, COUNTY, IT_BUDGET, EMPLE,
   spread(SICGRP,  per_sic)
   
   
-county_pop_median <- county_pop_basic %>% 
-                      select(!contains("mean")) %>% 
-                      left_join(county_pop_industry) %>% 
-                      left_join(county_qwi_agg %>% select(geography, its_emps_all), 
-                                                      by = c( 'COUNTY' = 'geography'))
-                    
 
 # - County sample statistics  (sample used in analyses)
 
@@ -117,9 +116,6 @@ county_sample_industry <- county_sample %>%
 
 county_sample_stat <- county_sample_basic %>% left_join(county_sample_industry)
 
-#county_sample_basic_win <- county_sample_stat %>% select(countyfips, count, contains("win") )
-
-#county_sample_basic_win_stat <- county_sample_basic_win %>%  left_join(county_sample_industry)
 
 
 county_sample_median <- county_sample_basic %>% 
@@ -143,15 +139,7 @@ county_pop_median <- county_pop_median %>%
   left_join(county_acs %>% rename("COUNTY" = "countyfips")%>%  select(-X))
 
 
-
-
-#ci_per_emp_county <- read_dta(here("1.Data", "3.output_data", "ci_per_emp_county.dta"))
-#county_sample_ci <- county_sample %>% left_join(ci_per_emp_county, by = c('countyfips' = 'county')) 
-
-
-
 ```
-
 
 
 
@@ -191,6 +179,8 @@ df <- county_sample_ci[, -c(1)]
 psych::describe(df)
 ```
 
+
+
 ```{r Combine above results and Create a nice table, rows.print = 100}
 demo <-county_sample_median_stat %>%
       left_join(county_sample_acs) %>% 
@@ -211,8 +201,12 @@ psych::describe(demo, fast = TRUE)
 
 ```{r Sample vs Population - Mean, sd, p-value}
 sample_pop_diff <- county_pop_median %>% 
-  mutate(sample = 0) %>% 
-  bind_rows(county_sample_median %>% mutate(sample = 1) %>% rename("COUNTY" = "countyfips"))
+  bind_rows(county_sample_median %>% rename("COUNTY" = "countyfips")) %>% 
+  group_by(COUNTY) %>% 
+  mutate(county_appear_time = n()) %>% 
+  arrange(COUNTY) %>% 
+  mutate(not_in_sample = ifelse(county_appear_time == 2, 0, 1)) %>% 
+  distinct()
 
 # Copy the table directly is better than export
 datasummary((`No. Establishments`= count)+
@@ -222,7 +216,7 @@ datasummary((`No. Establishments`= count)+
             (`Hardware Budget`= HARDWARE_BUDGET_median) +
             (`Software Budget` = SOFTWARE_BUDGET_median) +
             (`Service Budget` = SERVICES_BUDGET_median) +
-            (`IT Services Employees` = its_emps_all ) + 
+            (`IT Services Employees` = its_emps_all ) +
             (`Agriculture, Mining, and Construction` = `AG-M-C` ) +
             (`Education` = EDUC) +
             (`Finance, Insurance, and Real Estate` = `F-I-RE`) +
@@ -235,28 +229,44 @@ datasummary((`No. Establishments`= count)+
             (`Population` = population)+
             (`Internet Coverage` = internetper )+
             (`Household Income` = medianhouseholdincome) ~
-            (`Sample`=Factor(sample))*
+            (`Sample`=Factor(not_in_sample))*
               (Mean+SD),
             sparse_header = FALSE,
             data=filter(sample_pop_diff) )
 
  #   "Software Budget", "IT Service Budget", "IT Service Employees",
 
+
+datasummary((`No. Establishments`= count) ~ (`Sample`=Factor(not_in_sample))* mean, data= sample_pop_diff)
+
 ```
 
-```{r Sample vs pop - visulization }
+```{r Sample vs not in sample - comparison }
 
 #install.packages("rstatix")
+
+mydata <- iris %>%
+  filter(Species != "setosa") %>%
+  as_tibble()
+mydata %>% sample_n(6)
+mydata.long <- mydata %>%
+  pivot_longer(-Species, names_to = "variables", values_to = "value")
+
+stat.test <- mydata.long %>%
+  group_by(variables) %>%
+  t_test(value ~ Species) %>%
+  add_significance()
 
 library(rstatix)
 library(ggpubr)
 
 sample_pop_long <-  sample_pop_diff%>% 
-  pivot_longer(-c(COUNTY, sample), names_to = "variable", values_to = "value" )
+  pivot_longer(-c(COUNTY, not_in_sample), names_to = "variable", values_to = "value" )
 
 t.test <- sample_pop_long  %>% 
+  select(-COUNTY) %>% 
   group_by(variable) %>% 
-  t_test(value~sample) %>% 
+  t_test(value ~ not_in_sample) %>% 
   adjust_pvalue(method = "BH") %>% 
   add_significance()
 
@@ -264,24 +274,35 @@ write.csv(t.test, here("3.Report", "samplepopttest.csv")) # use this stat in tab
 ```
 
 ```{r}
+demo <- sample_pop_long %>% filter(variable  == "count")
+
+
+
+demo %>% 
+  select(-COUNTY) %>% 
+t_test(value ~ not_in_sample)  
+
+
+```
+
+
+```{r}
 
 sample_pop_long  %>%
   filter(variable %in% c("count", "EMPLE_median", "IT_BUDGET_median", "SOFTWARE_BUDGET_median", "SERVICES_BUDGET_median", "its_emps_all ", "REVEN_median") ) %>% 
-  ggplot(aes(x = value , fill = factor(sample)) ) +
+  ggplot(aes(x = value , fill = factor(not_in_sample)) ) +
     geom_density(alpha=0.3) + scale_x_log10() + facet_wrap(~variable, scales = "free") + theme_bw()
 
 
 sample_pop_long  %>%
   filter(variable %in% c("AG-M-C", "EDUC", "F-I-RE", "GOVT", "MANUF", "MED", "SVCS", "TR-UTL", "WHL-RT") ) %>% 
-  ggplot(aes(x = value , fill = factor(sample)) ) +
+  ggplot(aes(x = value , fill = factor(not_in_sample)) ) +
     geom_density(alpha=0.3) + scale_x_log10() + facet_wrap(~variable, scales = "free") +  theme_bw()
-
-
 
 
 sample_pop_long  %>%
   filter(variable %in% c("population", "internetper","totalhousehold",  "medianhouseholdincome") ) %>% 
-  ggplot(aes(x = value , fill = factor(sample)) ) +
+  ggplot(aes(x = value , fill = factor(not_in_sample)) ) +
     geom_density(alpha=0.3) + scale_x_log10() + facet_wrap(~variable, scales = "free") +  theme_bw()
 ```
 
@@ -359,6 +380,7 @@ need <- ui_county %>%
 county_outcome_summary <- county_outcome_summary %>% left_join(need)
 
 ```
+
 ```{r Statistics}
 
 outcome_summary_use <- county_outcome_summary %>% 

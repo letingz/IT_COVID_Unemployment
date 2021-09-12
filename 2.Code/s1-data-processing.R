@@ -845,3 +845,48 @@ colnames(demo)[11] <- "WHL_RT"
 
 write_dta(demo, here("Stata", "county_industry.dta"))
 
+
+a %>%
+  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it, group = group)) +
+  geom_polygon(color = "gray90", size = 0.05) +
+  coord_equal() + 
+  scale_fill_gradient2(high = "blue", mid = "white", low= "red", 
+                       limits=c(8,8.6),
+                       breaks = c(8.045, 8.3, 8.6), 
+                       midpoint = 8.3,
+                       labels = paste("$", c('<2,980', '4,023', '>5,431')),
+                       guide = "colorbar") +
+  labs(fill = "") + theme_map() + theme(legend.position = "right")+  
+  labs(x = "", y = "", title = "  IT Budget per Employee \nCounty Level") +  
+  theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
+        plot.caption = element_text(size = rel(1.2), hjust = 0),
+        #legend.title = element_text(size = rel(1.5)),
+        legend.text = element_text(size=15),
+        legend.position = c(0.98, 0.40)) + labs(caption = "Source: CiTDB 2019")
+
+ggsave(here("3.Report","itbudget_map.png"),  width = 7, height = 4, dpi = 300, units = "in", device='png')
+
+
+b %>%
+  right_join(county_map, by = c("geography"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it2, group = group)) +
+  geom_polygon(color = "gray90", size = 0.05) +
+  coord_equal() + 
+  scale_fill_gradient2(high = "blue", mid = "white", low= "red", 
+                       midpoint = 4.5, 
+                       limit = c(0,11) ,
+                       breaks = c(0, 4.5, 7,10), 
+                       labels = paste(c( '0', '100', '1,000', '>20,000'))) +
+  labs(fill = "") + theme_map() + theme(legend.position = "right")+  
+  labs(x = "", y = "", title = " Number of IT Service Employees \nCounty Level") +  
+  theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
+        plot.caption = element_text(size = rel(1.2), hjust = 0),
+        #legend.title = element_text(size = rel(1.5)),
+        legend.text = element_text(size=15),
+        legend.position = c(0.98, 0.40)) + labs(caption = "Source: Quarterly Workforce Indicators 2019")
+
+
+ggsave(here("3.Report","its_map.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
