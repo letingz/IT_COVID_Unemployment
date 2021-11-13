@@ -21,8 +21,7 @@ sort countyfips week
 order week, a(countyfips)
 drop if week ==.
 xtset countyfips week
-*xtsum
-
+encode state, g(state_code)
 rename countyfips county
 rename *, lower
 
@@ -60,6 +59,11 @@ g q4_high_`i' = (`i'_qtl == 4)
 g q2_high_`i' = (`i'_qtl > 2)
 }
 
+* Merge old IT groups
+
+drop _merge
+merge m:1 county using "C:\Users\Leting\Documents\2.Covid_IT_Employment\Stata\county_earlier_ITGroups.dta"
+
 
 **# Generate variables
 
@@ -67,26 +71,29 @@ g q2_high_`i' = (`i'_qtl > 2)
 g event = week - stayweek 
 forv tau = 5(-1)1 {
 g treatb`tau' = event == -`tau'
-la var treatb`tau' "This obs is `tau' years before the treatment"
+la var treatb`tau' "T - `tau'"
 }
 table event
 forv tau = 0/5 {
 g treata`tau' = event == `tau'
-la var treata`tau' "This obs is `tau' years after the treatment"
+la var treata`tau' "T + `tau'"
 }
 
-label variable treatb4 "T-4"
-label variable treatb5 "T-5"
-label variable treatb3 "T-4"
-label variable treatb3 "T-3"
-label variable treatb2 "T-2"
-label variable treatb1 "T-1"
+
+
+g treatb6 = (event== -6)
+order treatb6, b(treatb5)
+
 label variable treata0 "T=0"
-label variable treata1 "T+1"
-label variable treata2 "T+2"
-label variable treata3 "T+3"
-label variable treata4 "T+4"
-label variable treata5 "T+5"
+label variable treata6forward "T + 6 forward"
+
+g treata6forward = (event>5)
+
+g treatb6backward = (event<-5)
+g treatb5backward = (event<-4)
+g treatb4backward = (event<-3)
+
+order treatb6backward treatb5backward treatb4backward, b( treatb5 )
 
 g treated = tre*q4_high_it_budget_median
 
@@ -117,16 +124,82 @@ labvars initclaims_count_regular initclaims_rate_regular emp_combined avg_new_de
 labvars appdev_peremp_median-infra_peremp_median "App Dev" "Enterprise App " "Cloud Solution" "Personal Productivity" "Digital Marketing/Commerce" "Collaboration" "Security" "Infrastructure"
 labvars appdev_median-infra_median "App Dev" "Enterprise App " "Cloud Solution" "Personal Productivity" "Digital Marketing/Commerce" "Collaboration" "Security" "Infrastructure"
 
-
+labvars number_per_emp_Dev_median-number_per_emp_Network_median  "App Dev" "Enterprise Software" "Software-as-a-Service" "Database"  "Groupware and PCs" "Digital Marketing and E-business"  "Cybersecurity" "Hardware Infrastructure"
 
  
 * Employee industry distribution percentage 
 labvars agriculture construction manufacturing wholesale retail transportation information insurance "Agriculture Employees" "Construction Employees" "Manufacturing Employees" "Wholesalfe Employees" "Retail Employees" "Trans Employees" "Services Employees" "Insurance Employees"
   
   
-  
-  
- **# Achive 
+**# Matching variables
+
+frame copy default psm
+frame change psm
+frame pwf
+
+order countyname, a(county)
+
+preserve
+
+local usevar "it_budget_median q4_high_it_budget_median countyname  population medianhouseholdincome internetper totalhousehold emple_median reven_median agriculture construction manufacturing wholesale retail transportation information insurance"
+ 
+local matchvar "population medianhouseholdincome internetper totalhousehold emple_median reven_median agriculture construction manufacturing wholesale retail transportation information insurance"
+ 
+* Keep the key indicators and matched variables
+keep county  `usevar'
+duplicates drop
+drop if q4_high_it_budget_median == .
+
+
+
+cem population(#10) medianhouseholdincome(#10) internetper(#5) totalhousehold(#5) emple_median(#5) reven_median(#5) agriculture(#3) construction(#3) manufacturing(#3) wholesale(#3) retail(#3) transportation(#3) information(#3) insurance(#3) ,tre( q4_high_it_budget_median )
+
+g cem_strata_strict = cem_strata
+g cem_weight_strict = cem_weightss
+
+cem population(#5) medianhouseholdincome(#5) internetper(#5) totalhousehold(#5) emple_median(#5) reven_median(#5) agriculture(#3) construction(#3) manufacturing(#3) wholesale(#3) retail(#3) transportation(#3) information(#3) insurance(#3) ,tre( q4_high_it_budget_median )
+g cem_strata_relax = cem_strata
+g cem_weight_relax = cem_weights
+
+
+
+cem population(#10) medianhouseholdincome(#10) internetper(#10) totalhousehold(#10) emple_median(#10) reven_median(#10) agriculture(#5) construction(#5) manufacturing(#5) wholesale(#5) retail(#5) transportation(#5) information(#5) insurance(#5) ,tre( q4_high_it_budget_median )
+
+frame change default
+frlink m:1 county, frame(psm) generate(link)
+
+frget cem_strata_strict  = cem_strata_strict, from(link)
+frget cem_weight_strict  = cem_weight_strict, from(link)
+
+frget cem_strata_relax  =  cem_strata_relax, from(link)
+frget cem_weight_relax  = cem_weight_relax, from(link)
+
+frget cem_weights_10bins  = cem_weights_10bins, from(link)
+
+
+keep if cem_strata_strict == 117 | cem_strata_relax == 27
+
+* Philadelphia county number = 42101
+frame copy default phi
+frame change phi
+frame pwf
+codebook cem_strata_strict cem_strata_relax if county == 42101
+
+keep if cem_strata_strict == 117 | cem_strata_relax == 27
+
+
+twoway  (line initclaims_rate_regular week if county == 42101) (line initclaims_rate_regular week if county == 36005) , legend(on order(1 "Philly" 2 "Bronx" ))
+
+
+
+* San fan county  =  6075
+keep if cem_strata_strict == 112 | cem_strata_relax == 81
+
+
+
+
+ 
+
   
  
 * Adjecent county 
@@ -216,7 +289,9 @@ label variable internetper "Internet Coverage"
 
 label variable ln_income "Household Income"
 
+label var teleworkable_emp  "Telework index"
 
+label var ln_com_emp "IT equipment employees"
 
 
 // local var 'initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop '

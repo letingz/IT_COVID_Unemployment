@@ -1,0 +1,286 @@
+---
+title: "COVID19 & Unemployment"
+author: "LetingZhang"
+date: "10/22/2021"
+output: html_document
+---
+
+# Config
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r library}
+library(here)
+library(tidyverse)
+library(ipumsr)
+```
+
+
+```{r}
+# library(dplyr, warn.conflicts = FALSE)
+# library(tidyverse)
+```
+
+# Load data
+
+```{r}
+raw_path <- here("1.Data", "1.raw_data")
+```
+
+
+```{r load ipums data}
+#source: ipums
+
+
+# Change these filepaths to the filepaths of your downloaded extract
+cps_ddi_file <- here(raw_path, "cps_00005.xml")
+cps_data_file <- here(raw_path, "cps_00005.dat")
+cps_ddi <- read_ipums_ddi(cps_ddi_file) # Contains metadata, nice to have as separate object
+cps_data <- read_ipums_micro(cps_ddi_file, data_file = cps_data_file)
+```
+
+```{r load cencus data}
+#source: census website
+industry_code <- read.csv(here(raw_path, "cps_monthly_data/2017-census-industry-classification-titles-and-code-list.csv"))
+occupation_code<-read.csv(here(raw_path, "cps_monthly_data/2018-census-occupation-classification-titles-and-code-list.csv" ))
+geo_code <- read.csv(here(raw_path,"geocorr2018 -crosswalk.csv"))
+```
+
+
+```{r load and clean Shelter-in-plance data}
+#Source: https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
+#Reference: https://www.nytimes.com/interactive/2020/us/coronavirus-stay-at-home-order.html
+shelterdate <- read.csv(here(raw_path,"shelter-in-place.csv"))
+shelterdate$State <- str_replace_all(shelterdate$State, "[*]", "") #Remove * in state names
+
+shelterdate$State
+
+state_info<-data.frame(abb = state.abb, state = state.name)
+state_info[] <- lapply(state_info, as.character)
+
+state_info[nrow(state_info) + 1,] = c( "DC", "District of Columbia")
+state_info[nrow(state_info) + 1,] = c("PR", "Puerto Rico")
+
+
+shelterdate <- merge(shelterdate,state_info, by.x = "State", by.y = "state", all.x = TRUE )
+shelterdate$Order.Date <- str_replace_all(shelterdate$Order.Date, "/2020", "") #Remove * in state names
+
+#National Emergency Concerning: March 13 
+#Reference: https://www.whitehouse.gov/presidential-actions/proclamation-declaring-national-emergency-concerning-novel-coronavirus-disease-covid-19-outbreak/
+
+
+```
+
+
+# Data transformation
+
+
+```{r geography data summary}
+str(geo_code)
+unique(cps_data$STATEFIP)
+unique(cps_data$METAREA)
+unique(cps_data$COUNTY)
+
+```
+
+
+```{r Backup data}
+cps_data_demo<-cps_data
+cps_data_demo$YearMonth <- with(cps_data_demo, sprintf("%d-%02d", YEAR, MONTH))
+
+```
+
+
+```{r geography data clean - state}
+geo_code_state <- geo_code[c("state","stab")]
+geo_code_state <- geo_code_state[!duplicated(geo_code_state$state),]
+geo_code_state$state <- as.numeric(as.character(geo_code_state$state))
+
+cps_data$state_fip <- as.numeric(as.character(cps_data_demo$STATEFIP))
+cps_data_demo <- merge(cps_data, geo_code_state, by.x = "state_fip", by.y = "state", all.x = TRUE)
+cps_data_demo <- merge(cps_data,shelterdate[,c('abb','Order.Date')], by.x = "stab", by.y = "abb", all.x = TRUE)
+```
+
+
+```{r Employment related variables summary}
+
+ipums_val_labels(cps_ddi, EMPSTAT)
+
+ipums_val_labels(cps_ddi, LABFORCE)
+
+ipums_val_labels(cps_ddi, OCC)#need to refer to documents 
+
+ipums_val_labels(cps_ddi, IND)#need to refer to documents 
+
+table(cps_data$EMPSTAT)
+```
+
+
+
+
+```{r Geographic units analyses}
+#county level 
+
+cps_data_demo %>% 
+  filter( YearMonth > "2019-10") %>% 
+  group_by(YearMonth,COUNTY) %>% 
+  summarise(count = n(), 
+         total_workforce = sum(EMPSTAT<30 & EMPSTAT!=0),
+         unemployement = sum(EMPSTAT== 21 | EMPSTAT == 22),
+         unemployment_rate = unemployement/total_workforce)
+
+  
+cps_data_demo %>% 
+  filter( YearMonth > "2019-10") %>% 
+  group_by(YearMonth,METAREA) %>% 
+  summarise(count = n(), 
+         total_workforce = sum(EMPSTAT<30 & EMPSTAT!=0),
+         unemployement = sum(EMPSTAT== 21 | EMPSTAT == 22),
+         unemployment_rate = unemployement/total_workforce)
+
+
+cps_data_demo %>% 
+  filter( YearMonth > "2019-10") %>% 
+  group_by(YearMonth,STATEFIP) %>% 
+  summarise(count = n(), 
+         total_workforce = sum(EMPSTAT<30 & EMPSTAT!=0),
+         unemployement = sum(EMPSTAT== 21 | EMPSTAT == 22),
+         unemployment_rate = unemployement/total_workforce)
+
+# 
+
+```
+```{r}
+cps_data_demo %>% 
+  select(YearMonth,EMPSTAT,stab,Order.Date) %>% 
+  filter( YearMonth > "2019-10") %>% 
+  count(YearMonth,EMPSTAT,stab,Order.Date) %>% 
+  group_by(YearMonth,stab) %>% 
+  mutate(total = sum(n), 
+         total_workforce = sum(n[EMPSTAT<30 & EMPSTAT!=0]),
+         unemployement = sum(n[EMPSTAT== 21 | EMPSTAT == 22]),
+         unemployment_rate = unemployement/total_workforce,
+         stayathome = ifelse(is.na(Order.Date), 0,1))
+```
+
+
+
+
+
+```{r}
+
+demo1 <- cps_data_demo %>% 
+  select(YearMonth,EMPSTAT,stab,Order.Date) %>% 
+  filter( YearMonth > "2019-10") %>% 
+  count(YearMonth,EMPSTAT,stab,Order.Date) %>% 
+  group_by(YearMonth,stab) %>% 
+  mutate(total = sum(n), 
+         total_workforce = sum(n[EMPSTAT<30 & EMPSTAT!=0]),
+         unemployement = sum(n[EMPSTAT== 21 | EMPSTAT == 22]),
+         unemployment_rate = unemployement/total_workforce,
+         stayathome = ifelse(is.na(Order.Date), 0,1))
+
+
+demo1 %>% filter(stab == "AK")  
+
+```
+
+
+
+# Data visualization
+
+```{r}
+library(ggplot2)
+
+ggplot(obs, aes(x = YearMonth, y = n, group  = 1)) +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+obs1 <- cps_data_demo %>% 
+   count(YearMonth, EMPSTAT)
+
+obs1 <- obs1 %>% 
+  group_by(YearMonth) %>% 
+  mutate(total = sum(n))
+
+unemploy_exp <- obs1 %>% 
+  filter(EMPSTAT == 21)
+
+unemploy_new <- obs1 %>% 
+  filter(EMPSTAT == 22)
+unemploy_exp$prop <- unemploy_exp$n/unemploy_exp$total
+unemploy_new$prop <- unemploy_new$n/unemploy_new$total
+
+ggplot(unemploy_exp, aes(x = YearMonth, y =prop, group  = 1)) +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "Experienced workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
+
+ggplot(unemploy_new, aes(x = YearMonth, y =prop, group  = 1)) +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "New workers - Unemployment Rate", x = "Year-Month", y = "Proportion")
+
+```
+
+
+```{r unemployment }
+
+demo1 %>% 
+  filter( stab %in% c("AL", "CA", "PA","NY","AK","SC","CT","AL", "NJ")) %>% 
+  ggplot(mapping = aes(x = YearMonth, y = unemployment_rate, group  = 1)) +
+  geom_line() + 
+  facet_wrap(~stab, nrow =2)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  geom_vline(xintercept = "2020-04", colour="red") +
+  ggtitle("Unmployment rate (States imposed stay-at-home order) ") + 
+  ylab("Unemployment/Labor force")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+demo1 %>% 
+  filter(stayathome==0 ) %>% 
+  ggplot(mapping = aes(x = YearMonth, y = unemployment_rate, group  = 1)) +
+  geom_line() + 
+  facet_wrap(~stab, nrow =2)+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  geom_vline(xintercept = "2020-04", colour="red") +
+  ggtitle("Unmployment rate (No stay-at-home order )") + 
+  ylab("Unemployment/Labor force")+
+   aes(fill = as.factor(stayathome))+
+   theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+```{r}
+
+demo1 %>% 
+  group_by(YearMonth,stayathome) %>% 
+  summarise(avg_unemployment = mean(unemployment_rate)) %>% 
+  ggplot(aes(y = avg_unemployment,x = YearMonth, group = as.factor(stayathome), colour = as.factor(stayathome))) + 
+  geom_line() +
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(title = "Unmployment rate (Average)", x = "Year-Month", y = "Unemployment/Labor force", color = "Stay-at-home-order") +
+  scale_color_hue(labels = c("No", "YES")) +
+  geom_line(size=2)
+
+
+```
+
+
+```{r shelter in place order}
+
+shelterdate %>% 
+  arrange(Order.Date) %>% 
+  mutate(abb=factor(abb, levels = abb)) %>%
+  ggplot(aes(x=abb, y= Order.Date)) + 
+    geom_point() +
+     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+```
+

@@ -449,7 +449,20 @@ restaurants_visit_prop <- suppressMessages(
 )
 
 
+# Import job posting data -------------------------------------------
 
+geoid_city <- read.csv(here(raw_data_path, "employment", "GeoIDs - City.csv"))
+
+bg_city_job <- read.csv(here(raw_data_path, "employment", "Burning Glass - City - Weekly.csv"))
+
+
+bg_city_job <- bg_city_job %>% left_join(geoid_city)
+
+# Import newest employment data -------------------------------------------
+
+q1_2021_employ <- read.csv(here(raw_data_path, "employment", "2021_q1_employment.csv"))
+
+2021
 
 
 ############# AGGREGATE & CONSTRUCT ###############
@@ -890,3 +903,31 @@ b %>%
 
 
 ggsave(here("3.Report","its_map.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
+
+
+
+
+county_week_use %>% 
+  select(county, it_budget_median) %>% 
+  distinct() %>% 
+  ggplot(aes(x = it_budget_median)) +
+  geom_density() + 
+  geom_vline(xintercept = q4, linetype="dashed", color = "blue") +
+  annotate('text', x = q4+25000, y = 0.00007, label = "> High IT Budget", color = "blue", size = 5)+
+  geom_vline(xintercept = 46603, linetype="dashed", color = "orange") +
+  annotate('text', x = 46603+50000, y = 0.00005, label = "Orange County: 46603 USD", color = "orange", size = 5)+
+  labs(x = "IT Budget per Establishment (County-level median)", y = " Density", title = "2019 County-level IT Budget Distribution - Density") +  
+  theme_bw()
+
+
+
+ggsave(here("3.Report","its_budget.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
+
+
+
+
+
+# Data - IT Budget Descriptive Analyses ----------------------------------------------------
+
+rm(list=setdiff(ls(), "cu)"))
+

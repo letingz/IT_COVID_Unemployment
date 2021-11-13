@@ -315,6 +315,47 @@ ttest <- sample_pop_diff %>%
   
 ```
 
+# Employment data
+
+
+```{r}
+
+toDate <- function(year, month, day) {
+    ISOdate(year, month, day)
+}
+
+
+toNumerics <- function(Date) {
+    stopifnot(inherits(Date, c("Date", "POSIXt")))
+    day <- as.numeric(strftime(Date, format = "%d"))
+    month <- as.numeric(strftime(Date, format = "%m"))
+    year <- as.numeric(strftime(Date, format = "%Y"))
+    list(year = year, month = month, day = day)
+}
+
+posting_trend <- bg_city_job %>%
+                group_by(year, month) %>% 
+            summarise_at(3:17, mean, na.rm = TRUE) %>% 
+            mutate(date = toDate(year, month,"1")) 
+  
+  
+a <- posting_trend %>%
+   pivot_longer(-c(cityname, stateabbrev, year, month, date), names_to = "var", values_to = "value") 
+  #ggplot(aes(x = date, y = bg_posts_jz1))
+  
+  
+a %>% filter(grepl( "ss", var)) %>% 
+  ggplot(aes(x = date, y = value, color = var)) + geom_line()
+   
+  
+  
+
+
+```
+
+
+
+
 
 # Create correlation Matrix
 
@@ -449,6 +490,26 @@ summary_outcome %>%  ggplot(aes( y = indicator , x = value_use))+
 summary_outcome %>% filter(desc == "population")  %>% ggplot(aes( x = indicator , y = value ))+ geom_bar(stat="identity")
 
 ```
+
+# IT Budget Comparsion
+
+```{r}
+
+site2019 <- fread(here("1.Data", "1.raw_data", "USA_2019", "SiteDescription.TXT"), select = col)
+
+col <- c("SITEID", "PRIMARY_DUNS_NUMBER", "COMPANY", "STATE", "COUNTY" ,"ZIPCODE", "EMPLE", "REVEN", "SIC2_CODE", "SIC2_DESC")
+
+site2020 <- fread(here("1.Data", "1.raw_data", "citdb20", "SiteDescription.TXT"), select = col)
+
+it_spend2020<- fread(here("1.Data", "1.raw_data", "citdb20", "ITSpend.TXT"))
+
+site_it2020 <- merge(site2020, it_spend2020 )
+
+rm(site2020, it_spend2020)
+
+```
+
+
 
 
 # Synthetic Control
