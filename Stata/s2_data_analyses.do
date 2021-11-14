@@ -7,8 +7,10 @@
 **
 ************************
 
+**# One key run some script? 
 
-local filename "result/report_11a.rtf"
+
+local filename "result/report_13new.rtf"
 local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 
@@ -22,7 +24,7 @@ local fe county week
 local clevel county
 local vce cluster `clevel'
 local clusternote "Notes: Robust standard errors are clustered at the `clevel' level in parentheses." 
-
+local countynum N_clust
 
 
 global newITgroup 1  /* 0 = old IT groups; 1 = new IT groups*/
@@ -59,8 +61,8 @@ esttab  _all using "`filename'", replace keep(tre 1.tre#1.`it_tre' 1.tre#c.ln_it
 		interaction("*")
 		title("Main Effect")
 		mtitles("Fixed effects" "Fixed effects and control" "Continuous treatment")
-		label stat( r2 N df_a thfixed,
-		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
+		label stat( r2 N `countynum' thfixed,
+		fmt( %9.3f %9.0g %9.0g ) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
 		nonotes addnote("`clusternote'" "`starnote'")
 		nobaselevels 
@@ -69,7 +71,7 @@ esttab  _all using "`filename'", replace keep(tre 1.tre#1.`it_tre' 1.tre#c.ln_it
 #delimit cr;
 est clear
 
-**# Event study (graph)
+**#  Relative Time Model - Event study (graph)
 
 
 // local starlevel "* 0.10 ** 0.05 *** 0.01"
@@ -86,11 +88,11 @@ est clear
 est clear
 
 
-eststo:reghdfe initclaims_rate_regular treatb5backward treatb5-treatb1 treata1-treata5 treata6forward (treatb5backward treatb5-treatb1 treata1-treata5 treata6forward )##`it_tre' , absorb(`fe') vce(`vce')
+eststo:reghdfe initclaims_rate_regular treatb6backward treatb5-treatb1 treata1-treata5 treata6forward (treatb6backward treatb5-treatb1 treata1-treata5 treata6forward )##`it_tre' , absorb(`fe') vce(`vce')
 estadd local thfixed "YES"
 estadd local con "NO"
 
-eststo:reghdfe initclaims_rate_regular treatb5backward treatb5-treatb1 treata1-treata5 treata6forward (treatb5backward treatb5-treatb1 treata1-treata5 treata6forward )##`it_tre' `con', absorb(`fe') vce(`vce')
+eststo:reghdfe initclaims_rate_regular treatb6backward treatb5-treatb1 treata1-treata5 treata6forward (treatb6backward treatb5-treatb1 treata1-treata5 treata6forward )##`it_tre' `con', absorb(`fe') vce(`vce')
 estadd local thfixed "YES"
 estadd local con "YES"
 
@@ -99,7 +101,7 @@ estadd local con "YES"
 
 esttab  _all using "`filename'", a keep(treat* 1.treat*#1.`it_tre' `con')
 		title("Relative Time Model")
-		label stat( r2 N df_a thfixed,
+		label stat( r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
 		 interaction("*")
@@ -110,7 +112,7 @@ esttab  _all using "`filename'", a keep(treat* 1.treat*#1.`it_tre' `con')
 #delimit cr;
  est clear
  
- /* coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High IT Intensity on the Unemployment Rate", size(median))  xlabel(, labsize(tiny))  coeflabels(1.treatb5backward#1.`it_tre'= "T-6" 1.treatb5#1.`it_tre'= "T-5" 1.treatb4#1.`it_tre'= "T-4"  1.treatb3#1.`it_tre'= "T-3" 1.treatb2#1.`it_tre'= "T-2" 1.treatb1#1.`it_tre'= "T-1" 1.treata0#1.`it_tre'= "T=0" 1.treata1#1.`it_tre'= "T+1" 1.treata2#1.`it_tre'= "T+2" 1.treata3#1.`it_tre'= "T+3" 1.treata4#1.`it_tre'= "T+4" 1.treata5#1.`it_tre'= "T+5" 1.treata6forward#1.`it_tre'= "T+6" ) nolabel yline(0, lpattern(dash)) xline(7, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red))*/
+ /* coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High IT Intensity on the Unemployment Rate", size(median))  xlabel(, labsize(tiny))  coeflabels(1.treatb6backward#1.`it_tre'= "T-6" 1.treatb5#1.`it_tre'= "T-5" 1.treatb4#1.`it_tre'= "T-4"  1.treatb3#1.`it_tre'= "T-3" 1.treatb2#1.`it_tre'= "T-2" 1.treatb1#1.`it_tre'= "T-1" 1.treata0#1.`it_tre'= "T=0" 1.treata1#1.`it_tre'= "T+1" 1.treata2#1.`it_tre'= "T+2" 1.treata3#1.`it_tre'= "T+3" 1.treata4#1.`it_tre'= "T+4" 1.treata5#1.`it_tre'= "T+5" 1.treata6forward#1.`it_tre'= "T+6" ) nolabel yline(0, lpattern(dash)) xline(6.5, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red))*/
 
  
 **# Alternative measurements
@@ -144,7 +146,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#1.q4_high_its_emps_all 1.tre#c
 		title(Alternative Measurement - IT Service Employees)
 		interaction("*")
 		mtitles("Fixed effects" "Fixed effects and control" "Continuous treatment")
-		label stat( r2 N df_a tfixed hfixed,
+		label stat( r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
 		nonotes addnote("`clusternote'" "`starnote'")
@@ -157,16 +159,19 @@ est clear
 
 
 eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weight_relax !=0 , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
 
 eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weight_strict !=0 , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
 
 eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weights_10bins !=0 , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
 
 #delimit ;
 
 esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre' )
 		title(CEM )
-		label stat( r2 N df_a thfixed,
+		label stat(r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
 		 	interaction("*")
@@ -194,9 +199,9 @@ estadd local thfixed "YES"
 
 #delimit ;
 
-esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre' 1.tre#*1.q4_high_its_emps_all  1.tre#*c.teleworkable_emp )
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre' 1.tre#*1.q4_high_its_emps_all  1.tre#*c.teleworkable_emp 1.tre#c.ln_its_emps 1.tre#c.ln_com_emp )
 		title(Robustness - Telework and IT Equipment Employees )
-		label stat( r2 N df_a thfixed,
+		label stat(r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
 		 	interaction("*")
@@ -338,7 +343,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.appdev_peremp_me
 										    1.tre#1.`it_tre' 
 											
 										       `con'	)		
-		label stat( r2 N df_a thfixed,
+		label stat( r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week & County FE"))
 		 b(3) nogap onecell 
 		nonotes addnote("`clusternote'" "`starnote'")
@@ -512,7 +517,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.appdev_median
 										    1.tre#1.`it_tre' 
 											
 										       `con'	)		
-		label stat( r2 N df_a thfixed,
+		label stat( r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week & County FE"))
 		 b(3) nogap onecell 
 		nonotes addnote("Note: Robust errors are reported in parathese" "`starnote'")
@@ -525,8 +530,7 @@ est clear
 }
  
 
- 
-}
+
  
 
 
@@ -552,7 +556,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.internetper 1.tr
 		order(tre 1.tre#*1.`it_tre'#c.internetper 1.tre#*1.`it_tre'#c.ln_income 1.tre#*1.`it_tre'#c.bachelorhigherper
 										    1.tre#c.internetper  1.tre#c.ln_income 1.tre#c.bachelorhigherper 
 											 1.tre#1.`it_tre' `con' )		
-		label stat( r2 N df_a thfixed,
+		label stat(r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week & County FE"))
 		 b(3) nogap onecell 
 		  interaction("*")
@@ -624,7 +628,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.agriculture 1.tr
 											1.tre#c.wholesale 1.tre#c.retail
 											1.tre#c.transportation 1.tre#c.information
 											1.tre#c.insurance  `con' )		
-		label stat( r2 N df_a thfixed,
+		label stat( r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
 		nonotes addnote("`clusternote'" "`starnote'")

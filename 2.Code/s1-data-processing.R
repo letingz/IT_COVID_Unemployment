@@ -350,6 +350,16 @@ geo_code <- read.csv(here(raw_data_path,"geocorr2018 -crosswalk.csv"))
 #source: https://www.huduser.gov/portal/datasets/usps_crosswalk.html
 zip_county <- read.csv(here(raw_data_path, "ZIP_COUNTY_122019.csv"))
 
+
+zip_county_use <- zip_county %>%  # if a ZIP code belongs to two COUNTY, chose the COUNTY with higher proportion. 
+  select(ZIP, COUNTY, RES_RATIO) %>% 
+  group_by(ZIP) %>% 
+  mutate(numcounty = n(), 
+         max_ratio = max(RES_RATIO)) %>% 
+  filter(RES_RATIO == max_ratio) %>% select(c(ZIP, COUNTY)) %>% 
+  as.data.frame()
+
+
 #source: https://data.nber.org/cbsa-msa-fips-ssa-county-crosswalk/2019/
 msa_county <- read.csv(here(raw_data_path, "COUNTY_METRO2019.CSV"))
 
@@ -481,8 +491,8 @@ ci_data_key$ZIPCODE <- substr(ci_site[, c("SITEID","ZIPCODE")]$ZIPCODE,1,5)
 ci_data_key$ZIPCODE <- sub("^0+", "", ci_data_key$ZIPCODE)
 ci_data_key$ZIPCODE <- as.integer(ci_data_key$ZIPCODE)
 
-ci_data_key <- merge(ci_data_key, zip_county[, c("ZIP", "COUNTY")], by.x = "ZIPCODE", by.y = "ZIP", all.x = TRUE, allow.cartesian=TRUE)
-ci_data_key <- merge(ci_data_key, msa_county, by.x = "COUNTY", by.y = "FIPS.County.Code",all.x = TRUE, allow.cartesian=TRUE )
+ci_data_key <- merge(ci_data_key, zip_county_use[, c("ZIP", "COUNTY")], by.x = "ZIPCODE", by.y = "ZIP", all.x = TRUE, allow.cartesian=TRUE)
+#ci_data_key <- merge(ci_data_key, msa_county, by.x = "COUNTY", by.y = "FIPS.County.Code",all.x = TRUE, allow.cartesian=TRUE )
 
 # merge
 
@@ -547,6 +557,12 @@ colnames(ci_county_all)[10:17] <- c("appdev_median", "enterp_median", "cloud_med
 colnames(ci_county_all)[23:30] <- c("appdev_peremp_median", "enterp_peremp_median", "cloud_peremp_median", 
                                     "productivity_peremp_median", "marketing_peremp_median", "collab_peremp_median",
                                     "security_peremp_median", "infra_peremp_median")
+
+
+
+write_dta(ci_county_all, here("Stata", "county_ci_all.dta")) # Correct zip code issue and update Nov 2021
+
+
 
 # merge industry 
 
@@ -696,6 +712,7 @@ county_week_panel <- ui_county_week %>%
 write.csv(county_week_panel, here(out_data_path, "county_week_panel_aug.csv"))
 
 write_dta(county_week_panel, here("Stata", "county_week_panel_aug.dta"))
+
 
 
 
