@@ -330,7 +330,6 @@ ci_itspend <- ci_itspend %>%
 adopttech_19v2 <- readRDS(here(raw_data_path, "adopttech_19_site_techgroup_ver2.rds"))
 
 
-
 # TODO: Import CI site industry & employment data
 
 path <- paste(ci_path, '/SiteDescription.TXT', sep = '')
@@ -863,8 +862,6 @@ write.csv(state_month_panel, here(out_data_path, "state_month_panel.csv"))
 
 
 
-
-
 demo <- county_sample_industry %>% select(-c(`NON-CL`))
 
 colnames(demo)[1] <- "county"
@@ -944,7 +941,44 @@ ggsave(here("3.Report","its_budget.png"), width = 7, height = 4, dpi = 300, unit
 
 
 
+data_summary %>%  ggplot( aes(y = indicator , x = value_use)) +
+  geom_bar_pattern(aes(pattern = benchmark ), width = 0.4, stat="identity", fill = "gray")  +
+  scale_y_discrete(labels = c("pop" = "All Counties",
+                              "ui" = "Unemployment Insurance", 
+                              "pay" = "Payroll", 
+                              "cps" = "Current Population Survey"))+
+  scale_pattern_manual(values = c(Benchmark = "stripe", `Other Data Sources` = "none"))+ 
+  scale_alpha_manual(values = c(0.6,1)) +
+  facet_wrap(~facet, scales = "free_x") + 
+  theme_minimal()+  
+  labs(x = "", y = "", title = "Unemployement Data Sources: County-level Characteristics" ) +
+  theme(legend.position = "top", 
+        axis.title.y = element_blank(),
+        plot.title = element_text(size = rel(1.3), hjust = 0.5)) +
+  guides(pattern =guide_legend(title=""))
+
+
+ggsave(here("3.Report","data_representatives.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
+
+
+
+it_group_county_unemployrate %>% 
+  ggplot(aes(x = date, y = unemployment, 
+             color = factor(q4_high_it_budget_median) )) +
+  geom_line(size= 1.2) +
+  scale_color_manual(name = "High BAIT", labels = c("No", "YES"),values=c( "#264653", "#e76f51"))+
+  labs(x = "", y = " % Rate", title = "County Unemployment Rate: 2019 - 2020") +  
+  theme_minimal() + 
+  theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+        legend.title = element_text(size = rel(0.8)),
+        plot.caption = element_text(size = rel(1)),
+        legend.position = "top") +
+  labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+
+ggsave(here("3.Report","2019_unemployment_county_it.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
+
+
 # Data - IT Budget Descriptive Analyses ----------------------------------------------------
 
-rm(list=setdiff(ls(), "cu)"))
+rm(list=setdiff(ls(), "ci"))
 

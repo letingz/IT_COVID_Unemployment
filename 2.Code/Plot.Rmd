@@ -2,6 +2,7 @@
 title: "Plots"
 author: "Leting Zhang"
 date: "8/28/2021"
+update: "11/28/2021"
 output: html_document
 ---
 
@@ -16,9 +17,8 @@ library(haven)
 
 # Config
 ```{r Path}
+raw_data <- here("1.Data", "1.raw_data")
 output <- here("1.Data", "3.output_data")
-
-
 ```
 
 
@@ -44,9 +44,7 @@ county_week_use <- county_week %>%
 
 ```
 
-
-
-# Unemployment rate 
+# Plots - Unemployment rate - Figure 1A
 
 ```{r Unemployment rate }
 #saveRDS(ui_state_policy, here(output, "us_state_policy.rds" ))
@@ -71,106 +69,249 @@ ggplot(data = ui_state_policy ,
 ```
 
 
+# Plots - Compare three unemployementa data sources - Figure 1B
 
 ```{r Compile data- Comparison between three data sources}
-# Number of cover county number
+# Basic idea:  Extract covered county number
+county_week <- read_dta(here("Stata", "county_week_panel_aug_analysis.dta")) # UI, Employment data
+load("~/2.Covid_IT_Employment/CPS_2021.RData") # CPS data 
 
-# 1. cps_use 
 
-need <- employ_county_week %>%  # Chetty employment data
-    mutate(payroll = 1) %>% 
+# Benchmark: All county 
+mavar <-  c("county", "internetper", "medianhouseholdincome", "population", "totalhousehold")
+
+county_char <-  county_week %>% 
+  select(all_of(mavar)) %>% distinct()
+
+
+# Unemployment insurance claim  - county
+
+ui_county <- county_week %>% 
+    select(county,initclaims_rate_regular ) %>% 
+    filter(!is.na(initclaims_rate_regular)) %>% 
+    mutate(ui = 1) %>% 
+   select(county, ui) %>% distinct()
+
+# Employment data - county
+
+employ_county <- county_week %>% 
+    select(county,emp_combined ) %>% 
     filter(!is.na(emp_combined)) %>% 
-   select(countyfips, payroll) %>% distinct()
- 
-county_outcome_summary <- county_demo %>% left_join(need) # County population - merge with Chetty employment data
+    mutate(payroll = 1) %>% 
+    select(county, payroll) %>% distinct()
 
-need <- cps_use %>% 
-  mutate(cps = 1) %>% 
-  select(COUNTY, cps) %>% 
-  distinct() 
-  
+# CPS data  - county
 
-county_outcome_summary <- county_outcome_summary %>% left_join(need, c("countyfips" = "COUNTY"))
+cps_county <- cps_data %>% 
+    filter(COUNTY!= 0 & YEAR == 2020) %>% 
+    select(COUNTY) %>%
+    distinct() %>% 
+    mutate(cps = 1)
+
+colnames(cps_county)[1] <- "county"
 
 
-need <- ui_county %>% 
-  mutate(ui = 1) %>% 
-  select(countyfips, ui) %>% 
-  distinct()
+# Combine all data
 
-county_outcome_summary <- county_outcome_summary %>% left_join(need)
+county_datasource_all <- county_char %>% 
+    left_join(employ_county) %>% 
+    left_join(ui_county) %>% 
+    left_join(cps_county)
+
+
+
+
+#county_outcome_summary <- county_demo %>% left_join(need) # County population - merge with Chetty employment data
+# need <- cps_use %>% 
+#   mutate(cps = 1) %>% 
+#   select(COUNTY, cps) %>% 
+#   distinct() 
+# 
+# county_outcome_summary <- county_outcome_summary %>% left_join(need, c("countyfips" = "COUNTY"))
+# 
+# 
+# need <- ui_county %>% 
+#   mutate(ui = 1) %>% 
+#   select(countyfips, ui) %>% 
+#   distinct()
+# 
+# county_outcome_summary <- county_outcome_summary %>% left_join(need)
+
 
 ```
 
-```{r Statistics}
 
-outcome_summary_use <- county_outcome_summary %>% 
+```{r Calculate the average}
+
+data_obs_count <- county_datasource_all %>% 
   summarise(pop = n(),
             pay = sum(payroll == 1, na.rm = TRUE),
             cps = sum(cps == 1, na.rm = TRUE), 
             ui = sum(ui == 1, na.rm = TRUE)
             ) %>% gather(indicator, value, pop:ui) %>% 
-  mutate(desc = "count")
+  mutate(describe = "count") 
 
 
-d1 <- county_outcome_summary %>% 
-  summarise_at(2:5, mean, na.rm = TRUE ) %>% 
-  gather(desc, value, totalhousehold:medianhouseholdincome) %>% 
-  mutate(indicator = "pop")
-
-
-d2 <- county_outcome_summary %>% 
+data_char_avg <- county_datasource_all %>% 
+  summarise_at(c(2:5), mean, na.rm = TRUE ) %>% 
+   mutate(indicator = "pop") %>% 
+  add_row( # add payroll county 
+    county_datasource_all %>% 
   filter(payroll == 1) %>% 
   summarise_at(2:5, mean, na.rm = TRUE ) %>% 
-  gather(desc, value, totalhousehold:medianhouseholdincome )%>% 
   mutate(indicator = "pay")
-
-d3 <- county_outcome_summary %>% 
-  filter(cps == 1) %>% 
-  summarise_at(2:5, mean, na.rm = TRUE )%>% 
-  gather(desc, value, totalhousehold:medianhouseholdincome )%>% 
-  mutate(indicator = "cps")
-
-d4 <- county_outcome_summary %>% 
+  ) %>% 
+  add_row( # add ui county 
+     county_datasource_all %>% 
   filter(ui == 1) %>% 
-  summarise_at(2:5, mean, na.rm = TRUE )%>% 
-  gather(desc, value, totalhousehold:medianhouseholdincome )%>% 
+  summarise_at(2:5, mean, na.rm = TRUE ) %>% 
   mutate(indicator = "ui")
+  ) %>% 
+  add_row( # add cps county 
+      county_datasource_all %>% 
+  filter(cps == 1) %>% 
+  summarise_at(2:5, mean, na.rm = TRUE ) %>% 
+  mutate(indicator = "cps")
+  ) %>% 
+  gather(describe, value, 1:4, -indicator)
 
-summary_outcome <- rbind(outcome_summary_use, d1, d2, d3, d4) 
+
+
+data_summary <-  data_obs_count %>% 
+           add_row(data_char_avg)
+
+# d3 <- county_outcome_summary %>% 
+#   filter(cps == 1) %>% 
+#   summarise_at(2:5, mean, na.rm = TRUE )%>% 
+#   gather(desc, value, totalhousehold:medianhouseholdincome )%>% 
+#   mutate(indicator = "cps")
+# 
+# d4 <- county_outcome_summary %>% 
+#   filter(ui == 1) %>% 
+#   summarise_at(2:5, mean, na.rm = TRUE )%>% 
+#   gather(desc, value, totalhousehold:medianhouseholdincome )%>% 
+#   mutate(indicator = "ui")
+# 
+# summary_outcome <- rbind(outcome_summary_use, d1, d2, d3, d4) 
 
 
 
-summary_outcome$indicator <- factor(summary_outcome$indicator, level = c("cps","pay", "ui", "pop" ))
 
-summary_outcome <- summary_outcome %>% 
+
+data_summary <- data_summary %>% 
                 mutate(value_use = value, 
-                       value_use = ifelse(desc %in% c("population", "totalhousehold") , value/1000, value),
-                       facet = recode(desc, "count" = "Total Observations",
-                                           "internetper" = "Internet Percentage", 
-                                            "medianhouseholdincome" = "Median Household Income", 
-                                            "population" = "Population/1000", 
-                                            "totalhousehold" = "Total Household/1000") )
+                       value_use = ifelse(describe %in% c("population", "totalhousehold") , value/1000, value),
+                       facet = recode(describe, "count" = "Total Observations",
+                                      "internetper" = "Internet Percentage", 
+                                      "medianhouseholdincome" = "Median Household Income", 
+                                      "population" = "Population/1000", 
+                                      "totalhousehold" = "Total Household/1000") )
+
+data_summary$indicator <- factor(data_summary$indicator, level = c("pop", "pay", "cps", "ui" ))
+
+data_summary$indicator <- factor(data_summary$indicator, level = c("cps", "pay", "ui", "pop" ))
+
+data_summary <- data_summary %>% 
+  mutate(benchmark = ifelse(indicator == "pop", "Benchmark", "Other Data Sources"))
 ```
 
-```{r}
+```{r Plot}
 
-summary_outcome %>%  ggplot(aes( y = indicator , x = value_use))+
-                    geom_bar(width = 0.4, stat="identity") + 
-                    scale_y_discrete(labels = c("pop" = "All Counties", "ui" = "Unemployment Insurance", "pay" = "Payroll", "cps" = "Current Population Survey"))+
-              scale_alpha_manual(values = c(0.6,1)) +
-              facet_wrap(~facet, scales = "free_x") + 
-               theme_minimal()+  labs(x = "", y = "", title = "Data Representativeness" )
+
+library(ggpattern)
+
+data_summary %>%  ggplot( aes(y = indicator , x = value_use)) +
+                  geom_bar_pattern(aes(pattern = benchmark ), width = 0.4, stat="identity", fill = "gray")  +
+                  scale_y_discrete(labels = c("pop" = "All Counties",
+                                              "ui" = "Unemployment Insurance", 
+                                              "pay" = "Payroll", 
+                                              "cps" = "Current Population Survey"))+
+                  scale_pattern_manual(values = c(Benchmark = "stripe", `Other Data Sources` = "none"))+ 
+                  scale_alpha_manual(values = c(0.6,1)) +
+                  facet_wrap(~facet, scales = "free_x") + 
+                  theme_minimal()+  
+                  labs(x = "", y = "", title = "Unemployement Data Sources: County-level Characteristics" ) +
+                  theme(legend.position = "top", 
+                        axis.title.y = element_blank(),
+                        plot.title = element_text(size = rel(1.3), hjust = 0.5)) +
+                  guides(pattern =guide_legend(title=""))
 
 #scale_fill_manual(values = c("red","red","red","red")) +
 
 ```
 
+
+
+
+# Plots - Unemployement rate - 2019 longer trend
+
 ```{r}
 
-summary_outcome %>% filter(desc == "population")  %>% ggplot(aes( x = indicator , y = value ))+ geom_bar(stat="identity")
+library(zoo)
+# Read data: Unemployment rate 2019 2020
+county_unemprate_19_20 <- readRDS("~/2.Covid_IT_Employment/1.Data/3.output_data/county_unemprate_19_20.rds")
+
+# Process county name
+county_unemprate_19_20 <- county_unemprate_19_20 %>% 
+                          mutate(county_name = str_replace(county," County", ""), # Remove "County"
+                                 county_name = substr(county_name, 1, nchar(county_name) - 3), #"Remove (U)"
+                                 county_name = trimws(county_name)) %>%  #Remove leading/trailing white spaces
+                          select(-c(series_id, county))
+
+
+# Read data: county IT budget
+county_week <- as.data.frame(read_dta(here("Stata", "county_week_panel_new.dta"))) 
+
+county_it <- county_week %>% select(county, q4_high_it_budget_median) %>% distinct()
+
+county_info <- read.csv(here(raw_data, "GeoIDs - County.csv"))
+county_info <- county_info %>% 
+  mutate(county_name = paste(countyname, ",", " ", stateabbrev, sep = "")) %>% 
+  select(countyfips, county_name)
+
+county_use <- county_it %>% 
+  left_join(county_info, by = c("county" = "countyfips")) %>% 
+  left_join(county_unemprate_19_20) %>% 
+  filter(period != "M13") %>% 
+  mutate(month = as.numeric(substr(period, 2, 3)),
+         date = as.yearmon(paste(year,month, sep = "-")) )
 
 ```
+```{r Summarize and calculate the mean value}
+it_group_county_unemployrate <- county_use %>% 
+  mutate(value = as.numeric(value)) %>% 
+  group_by(q4_high_it_budget_median, date) %>% 
+  summarise(unemployment = mean(value, na.rm = TRUE)) %>% 
+  ungroup()
+```
+
+```{r Plot}
+
+it_group_county_unemployrate %>% 
+  
+  ggplot(aes(x = date, y = unemployment, 
+            color = factor(q4_high_it_budget_median) )) +
+  geom_line(size= 1.2) +
+  scale_color_manual(name = "High BAIT", labels = c("No", "YES"),values=c( "#264653", "#e76f51"))+
+  labs(x = "", y = " % Rate", title = "County Unemployment Rate: 2019 - 2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+  
+
+```
+
+
+
+```{r}
+
+```
+
+
+
 
 # IT investment
 
@@ -192,63 +333,19 @@ county_week_use %>%
   ggplot(aes(x = it_budget_median)) +
   geom_density() + 
   geom_vline(xintercept = q4, linetype="dashed", color = "blue") +
-  annotate('text', x = q4+25000, y = 0.00007, label = "> High IT Budget", color = "blue", size = 5)+
-   geom_vline(xintercept = 46603, linetype="dashed", color = "orange") +
-  annotate('text', x = 46603+50000, y = 0.00005, label = "Orange County: 46603 USD", color = "orange", size = 5)+
-  labs(x = "IT Budget per Establishment (County-level median)", y = " Density", title = "2019 County-level IT Budget Distribution - Density") +  
+  annotate('text', x = q4+25000, y = 0.00007, label = "> High BAIT", color = "blue", size = 5)+
+ #  geom_vline(xintercept = 46603, linetype="dashed", color = "orange") +
+  #annotate('text', x = 46603+50000, y = 0.00005, label = "Orange County: 46603 USD", color = "orange", size = 5)+
+  labs(x = "County-level median of IT Budget per Establishment (USD)", y = " Density", title = "2019 County-level Business Acess to IT Resources - Density") +  
       theme_bw()
   
 
 
 ```
 
-```{r Map}
-
-ci_summarise_all %>% select(COUNTY,IT_BUDGET_median ) %>%
-  mutate(it = log(IT_BUDGET_median)) %>% 
-  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
-  ggplot(mapping = aes(x = long, y = lat, 
-                       fill = it, group = group)) +
-      geom_polygon(color = "gray90", size = 0.05) +
-      coord_equal() + scale_fill_gradient(high = "blue", low= "gray", breaks = c(9,8.5,8), labels = paste("$", c('8,103', '4,915', '2,980')) ) + 
-      labs(fill = "") + theme_map() + theme(legend.position = "right")+  
-  labs(x = "", y = "", title = "  IT Budget per Employee \nCounty Level") +  
-      theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
-           plot.caption = element_text(size = rel(1.2), hjust = 0),
-           #legend.title = element_text(size = rel(1.5)),
-            legend.text = element_text(size=15),
-           legend.position = c(0.98, 0.40)) + labs(caption = "Source: CiTDB 2019")
-```
 
 
-```{r}
 
-a <- ci_summarise_per_emp %>% select(COUNTY,IT_BUDGET_per_emp_median) %>%
-  mutate(it = log(IT_BUDGET_per_emp_median + 1),
-         it2= winsorize(it))
-
-a %>%
-  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
-  ggplot(mapping = aes(x = long, y = lat, 
-                       fill = it, group = group)) +
-      geom_polygon(color = "gray90", size = 0.05) +
-      coord_equal() + 
-    scale_fill_gradient2(high = "blue", mid = "white", low= "red", 
-                        limits=c(8,8.6),
-                         breaks = c(8.045, 8.3, 8.6), 
-                         midpoint = 8.3,
-                         labels = paste("$", c('<2,980', '4,023', '>5,431')),
-                         guide = "colorbar") +
-      labs(fill = "") + theme_map() + theme(legend.position = "right")+  
-  labs(x = "", y = "", title = "  IT Budget per Employee \nCounty Level") +  
-      theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
-           plot.caption = element_text(size = rel(1.2), hjust = 0),
-           #legend.title = element_text(size = rel(1.5)),
-            legend.text = element_text(size=15),
-           legend.position = c(0.98, 0.40)) + labs(caption = "Source: CiTDB 2019")
-
-
-```
 ```{r}
 library(robustHD)
 winsorize
@@ -280,8 +377,53 @@ b %>%
 
 
 
-# Model-free evidence
-```{r Model-free evidence }
+# Archive
+```{r Map}
+
+ci_summarise_all %>% select(COUNTY,IT_BUDGET_median ) %>%
+  mutate(it = log(IT_BUDGET_median)) %>% 
+  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + scale_fill_gradient(high = "blue", low= "gray", breaks = c(9,8.5,8), labels = paste("$", c('8,103', '4,915', '2,980')) ) + 
+      labs(fill = "") + theme_map() + theme(legend.position = "right")+  
+  labs(x = "", y = "", title = "  IT Budget per Employee \nCounty Level") +  
+      theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
+           plot.caption = element_text(size = rel(1.2), hjust = 0),
+           #legend.title = element_text(size = rel(1.5)),
+            legend.text = element_text(size=15),
+           legend.position = c(0.98, 0.40)) + labs(caption = "Source: CiTDB 2019")
+```
+```
+
+
+```{r}
+
+a <- ci_summarise_per_emp %>% select(COUNTY,IT_BUDGET_per_emp_median) %>%
+  mutate(it = log(IT_BUDGET_per_emp_median + 1),
+         it2= winsorize(it))
+
+a %>%
+  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + 
+    scale_fill_gradient2(high = "blue", mid = "white", low= "red", 
+                        limits=c(8,8.6),
+                         breaks = c(8.045, 8.3, 8.6), 
+                         midpoint = 8.3,
+                         labels = paste("$", c('<2,980', '4,023', '>5,431')),
+                         guide = "colorbar") +
+      labs(fill = "") + theme_map() + theme(legend.position = "right")+  
+  labs(x = "", y = "", title = "  IT Budget per Employee \nCounty Level") +  
+      theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
+           plot.caption = element_text(size = rel(1.2), hjust = 0),
+           #legend.title = element_text(size = rel(1.5)),
+            legend.text = element_text(size=15),
+           legend.position = c(0.98, 0.40)) + labs(caption = "Source: CiTDB 2019")
+
 
 ```
 
