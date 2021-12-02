@@ -23,7 +23,7 @@ out_data_path <- here("1.Data","3.output_data")
 ####### LOG  #######
 
 # 2021/07/27 create new measurements for IT budget: IT budget/emp, computer, computer/emp
-  # create industry measurement, firm size 
+# create industry measurement, firm size 
 
 
 ############# IMPORT & CLEAN DATA ###############
@@ -940,25 +940,6 @@ ggsave(here("3.Report","its_budget.png"), width = 7, height = 4, dpi = 300, unit
 
 
 
-
-data_summary %>%  ggplot( aes(y = indicator , x = value_use)) +
-  geom_bar_pattern(aes(pattern = benchmark ), width = 0.4, stat="identity", fill = "gray")  +
-  scale_y_discrete(labels = c("pop" = "All Counties",
-                              "ui" = "Unemployment Insurance", 
-                              "pay" = "Payroll", 
-                              "cps" = "Current Population Survey"))+
-  scale_pattern_manual(values = c(Benchmark = "stripe", `Other Data Sources` = "none"))+ 
-  scale_alpha_manual(values = c(0.6,1)) +
-  facet_wrap(~facet, scales = "free_x") + 
-  theme_minimal()+  
-  labs(x = "", y = "", title = "Unemployement Data Sources: County-level Characteristics" ) +
-  theme(legend.position = "top", 
-        axis.title.y = element_blank(),
-        plot.title = element_text(size = rel(1.3), hjust = 0.5)) +
-  guides(pattern =guide_legend(title=""))
-
-
-ggsave(here("3.Report","data_representatives.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
 
 
 

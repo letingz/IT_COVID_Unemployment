@@ -44,7 +44,7 @@ county_week_use <- county_week %>%
 
 ```
 
-# Plots - Unemployment rate - Figure 1A
+# Plots - Unemployment rate & Stay-at-home
 
 ```{r Unemployment rate }
 #saveRDS(ui_state_policy, here(output, "us_state_policy.rds" ))
@@ -69,7 +69,7 @@ ggplot(data = ui_state_policy ,
 ```
 
 
-# Plots - Compare three unemployementa data sources - Figure 1B
+# Plots - Compare three unemployementa data sources
 
 ```{r Compile data- Comparison between three data sources}
 # Basic idea:  Extract covered county number
@@ -119,25 +119,6 @@ county_datasource_all <- county_char %>%
     left_join(cps_county)
 
 
-
-
-#county_outcome_summary <- county_demo %>% left_join(need) # County population - merge with Chetty employment data
-# need <- cps_use %>% 
-#   mutate(cps = 1) %>% 
-#   select(COUNTY, cps) %>% 
-#   distinct() 
-# 
-# county_outcome_summary <- county_outcome_summary %>% left_join(need, c("countyfips" = "COUNTY"))
-# 
-# 
-# need <- ui_county %>% 
-#   mutate(ui = 1) %>% 
-#   select(countyfips, ui) %>% 
-#   distinct()
-# 
-# county_outcome_summary <- county_outcome_summary %>% left_join(need)
-
-
 ```
 
 
@@ -180,23 +161,6 @@ data_char_avg <- county_datasource_all %>%
 data_summary <-  data_obs_count %>% 
            add_row(data_char_avg)
 
-# d3 <- county_outcome_summary %>% 
-#   filter(cps == 1) %>% 
-#   summarise_at(2:5, mean, na.rm = TRUE )%>% 
-#   gather(desc, value, totalhousehold:medianhouseholdincome )%>% 
-#   mutate(indicator = "cps")
-# 
-# d4 <- county_outcome_summary %>% 
-#   filter(ui == 1) %>% 
-#   summarise_at(2:5, mean, na.rm = TRUE )%>% 
-#   gather(desc, value, totalhousehold:medianhouseholdincome )%>% 
-#   mutate(indicator = "ui")
-# 
-# summary_outcome <- rbind(outcome_summary_use, d1, d2, d3, d4) 
-
-
-
-
 
 data_summary <- data_summary %>% 
                 mutate(value_use = value, 
@@ -210,7 +174,6 @@ data_summary <- data_summary %>%
 data_summary$indicator <- factor(data_summary$indicator, level = c("pop", "pay", "cps", "ui" ))
 
 data_summary$indicator <- factor(data_summary$indicator, level = c("cps", "pay", "ui", "pop" ))
-
 data_summary <- data_summary %>% 
   mutate(benchmark = ifelse(indicator == "pop", "Benchmark", "Other Data Sources"))
 ```
@@ -306,14 +269,41 @@ it_group_county_unemployrate %>%
 
 
 
+#Plots - BAIT distribution map 
+
 ```{r}
+
+mid_data <- ci_summarise_all %>% select(COUNTY,IT_BUDGET_median) %>%
+  mutate(it = log(IT_BUDGET_median + 1),
+         it2= winsorize(it))
+
+mid_data %>%
+  right_join(county_map, by = c("COUNTY"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it2, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + 
+    scale_fill_gradient2(high = "blue", mid = "white", low= "red", 
+                        limits=c(10.37,10.93),
+                         breaks = c(10.37, 10.65, 10.92), 
+                         midpoint = 10.65,
+                         labels = paste("$", c('32,208', '42,192', '54,176')),
+                         guide = "colorbar") +
+      labs(fill = "") + theme_map() + theme(legend.position = "right")+  
+  labs(x = "", y = "", title = " 2019 County-level Business Access to IT (BAIT) - Map",
+        caption = "Note: The measurement is county-level median of IT budget per establishment (USD)") +  
+      theme(plot.title = element_text(size = rel(1.5), hjust = 0.5),
+           plot.caption = element_text(size = rel(1.2), hjust = 0),
+           #legend.title = element_text(size = rel(1.5)),
+            legend.text = element_text(size=8),
+           legend.position = c(0.92, 0.40)) 
 
 ```
 
 
 
 
-# IT investment
+# Plots - County-level IT investment density
 
 ```{r IT investment -4th quantile}
 
@@ -336,45 +326,58 @@ county_week_use %>%
   annotate('text', x = q4+25000, y = 0.00007, label = "> High BAIT", color = "blue", size = 5)+
  #  geom_vline(xintercept = 46603, linetype="dashed", color = "orange") +
   #annotate('text', x = 46603+50000, y = 0.00005, label = "Orange County: 46603 USD", color = "orange", size = 5)+
-  labs(x = "County-level median of IT Budget per Establishment (USD)", y = " Density", title = "2019 County-level Business Acess to IT Resources - Density") +  
+  labs(x = "County-level median of IT Budget per Establishment (USD)", y = " Density", title = "2019 County-level Business Acess to IT (BAIT) - Density") +  
       theme_bw()
   
 
 
 ```
 
-
+# Plots - Unemployment rate group by high/low BAIT
 
 
 ```{r}
-library(robustHD)
-winsorize
+plot <- county_week %>% 
+  select(month, county, stayweek, tre, initclaims_rate_regular,q4_high_it_budget_median) %>% 
+  filter( !is.na(stayweek)) %>% 
+  group_by(month, q4_high_it_budget_median) %>% 
+  summarise(avg_initclaims_rate = mean(initclaims_rate_regular, na.rm = TRUE))
 
-b <- county_qwi_agg %>% select(geography, its_emps_all) %>% 
-  mutate(it = log(its_emps_all + 1),
-        it2 = winsorize(it))
 
-b %>%
-  right_join(county_map, by = c("geography"  = "county") ) %>% 
-  ggplot(mapping = aes(x = long, y = lat, 
-                       fill = it2, group = group)) +
-      geom_polygon(color = "gray90", size = 0.05) +
-      coord_equal() + 
-    scale_fill_gradient2(high = "blue", mid = "white", low= "red", 
-                         midpoint = 4.5, 
-                         limit = c(0,11) ,
-                         breaks = c(0, 4.5, 7,10), 
-                         labels = paste(c( '0', '100', '1,000', '>20,000'))) +
-      labs(fill = "") + theme_map() + theme(legend.position = "right")+  
-  labs(x = "", y = "", title = " Number of IT Service Employees \nCounty Level") +  
-      theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
-           plot.caption = element_text(size = rel(1.2), hjust = 0),
-           #legend.title = element_text(size = rel(1.5)),
-            legend.text = element_text(size=15),
-           legend.position = c(0.98, 0.40)) + labs(caption = "Source: Quarterly Workforce Indicators 2019")
+plot %>%
+  ggplot(aes(x = month, y = avg_initclaims_rate,
+             color =  factor(q4_high_it_budget_median)) ) +  
+              geom_line(size = 1.3) + 
+             scale_x_continuous(breaks = seq(1,10,1), 
+                                labels = function(x)month.abb[x])+
+             labs(x = "", y = "Rate %", 
+       title = "2020 The Impact of BAIT on Unemployment Rate \n After Stay-at-home Enforcement  ")+
+  scale_color_manual(name = "Business Access to IT (BAIT)", 
+                     labels = c("Low", "Hight"),values=c( "red", "blue")) +
+  theme_minimal() + 
+  theme(plot.title = element_text(size = rel(1.2), hjust = 0.5, ),
+        legend.title = element_text(size = rel(1)),
+        legend.key.width= unit(1, 'cm'),
+        legend.text = element_text(size=10, color = "#696969"),
+        axis.text=element_text(size= 11),
+        axis.title.y = element_text(size = rel(1.2), angle = 90),
+        axis.title.x = element_text(size = rel(1.2)),
+        plot.caption = element_text(size = rel(1), hjust = 0),
+        legend.position = "top") +
+  labs(caption = "Note: Unemployment rate =  Number of initial unemployment insurance (UI) claims per 100 people in the 2019 labor force.") +
+  geom_vline(xintercept = 3,
+             color =  "#191970", size=1.2, linetype="dashed") + 
+  annotate("text", x = 1.8, y = 2.8, label = "Before", size = 4)+
+  annotate("text", x = 6, y = 2.8, label = "After", size = 4) +
+  annotate("text", x = 1.8, y = 1.5, label = "Stay-at-home \n enforcement", size = 4) +
+  annotate("segment", x = 1, xend = 2.8, y = 3, yend = 3,
+           arrow = arrow(ends = "both", angle = 90, length = unit(0.5,"cm")), size = 1) + 
+  annotate("segment", x = 3.2, xend = 11, y = 3, yend = 3,
+           arrow = arrow(ends = "both", angle = 90, length = unit(0.5,"cm")), size = 1) + 
+  annotate("segment", x = 2, xend = 2.8, y = 1.8, yend =2.3 ,
+           colour = "black", size = 1, arrow = arrow())
 
 ```
-
 
 
 # Archive
@@ -428,3 +431,32 @@ a %>%
 ```
 
 
+
+```{r}
+library(robustHD)
+winsorize
+
+b <- county_qwi_agg %>% select(geography, its_emps_all) %>% 
+  mutate(it = log(its_emps_all + 1),
+        it2 = winsorize(it))
+
+b %>%
+  right_join(county_map, by = c("geography"  = "county") ) %>% 
+  ggplot(mapping = aes(x = long, y = lat, 
+                       fill = it2, group = group)) +
+      geom_polygon(color = "gray90", size = 0.05) +
+      coord_equal() + 
+    scale_fill_gradient2(high = "blue", mid = "white", low= "red", 
+                         midpoint = 4.5, 
+                         limit = c(0,11) ,
+                         breaks = c(0, 4.5, 7,10), 
+                         labels = paste(c( '0', '100', '1,000', '>20,000'))) +
+      labs(fill = "") + theme_map() + theme(legend.position = "right")+  
+  labs(x = "", y = "", title = " Number of IT Service Employees \nCounty Level") +  
+      theme(plot.title = element_text(size = rel(2.5), hjust = 0.5),
+           plot.caption = element_text(size = rel(1.2), hjust = 0),
+           #legend.title = element_text(size = rel(1.5)),
+            legend.text = element_text(size=15),
+           legend.position = c(0.98, 0.40)) + labs(caption = "Source: Quarterly Workforce Indicators 2019")
+
+```
