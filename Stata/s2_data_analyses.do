@@ -10,7 +10,7 @@
 **# One key run some script? 
 
 
-local filename "result/report_13new.rtf"
+local filename "result/report_1201new.rtf"
 local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 
@@ -22,7 +22,8 @@ local it_tre q4_high_it_budget_median
 local fe county week
 
 local clevel county
-local vce cluster `clevel'
+*local vce cluster `clevel'
+local vce rob
 local clusternote "Notes: Robust standard errors are clustered at the `clevel' level in parentheses." 
 local countynum N_clust
 
@@ -112,7 +113,7 @@ esttab  _all using "`filename'", a keep(treat* 1.treat*#1.`it_tre' `con')
 #delimit cr;
  est clear
  
- /* coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High IT Intensity on the Unemployment Rate", size(median))  xlabel(, labsize(tiny))  coeflabels(1.treatb6backward#1.`it_tre'= "T-6" 1.treatb5#1.`it_tre'= "T-5" 1.treatb4#1.`it_tre'= "T-4"  1.treatb3#1.`it_tre'= "T-3" 1.treatb2#1.`it_tre'= "T-2" 1.treatb1#1.`it_tre'= "T-1" 1.treata0#1.`it_tre'= "T=0" 1.treata1#1.`it_tre'= "T+1" 1.treata2#1.`it_tre'= "T+2" 1.treata3#1.`it_tre'= "T+3" 1.treata4#1.`it_tre'= "T+4" 1.treata5#1.`it_tre'= "T+5" 1.treata6forward#1.`it_tre'= "T+6" ) nolabel yline(0, lpattern(dash)) xline(6.5, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red))*/
+coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High BAIT on Unemployment Rates", size(median))  xlabel(, labsize(tiny))  coeflabels(1.treatb6backward#1.`it_tre'= "T-6" 1.treatb5#1.`it_tre'= "T-5" 1.treatb4#1.`it_tre'= "T-4"  1.treatb3#1.`it_tre'= "T-3" 1.treatb2#1.`it_tre'= "T-2" 1.treatb1#1.`it_tre'= "T-1" 1.treata0#1.`it_tre'= "T=0" 1.treata1#1.`it_tre'= "T+1" 1.treata2#1.`it_tre'= "T+2" 1.treata3#1.`it_tre'= "T+3" 1.treata4#1.`it_tre'= "T+4" 1.treata5#1.`it_tre'= "T+5" 1.treata6forward#1.`it_tre'= "T+6" ) nolabel yline(0, lpattern(dash)) xline(6.5, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red))
 
  
 **# Alternative measurements
@@ -123,7 +124,7 @@ esttab  _all using "`filename'", a keep(treat* 1.treat*#1.`it_tre' `con')
 // local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
 // local it_group appdev_median-infra_median 
 //
-// global output 1 /*no syntehtic control or other analyses*/
+// global output 1 /*no synthetic control or other analyses*/
 // global newITgroup 0  /* 0 = old IT groups; 1 = new IT groups*/
 
 
@@ -355,6 +356,13 @@ est clear
  
 }
  
+ 
+local itgroup app ent cloud productivity market collarborate security infra per_app per_ent per_cloud per_product per_market per_collarborate per_security per_infra
+
+foreach m of local itgroup {
+	reghdfe initclaims_rate_regular tre tre##`it_tre'##c.`m' `con', absorb(`fe') vce(rob)
+	}
+	 
  
  
 local vce rob

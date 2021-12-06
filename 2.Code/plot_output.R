@@ -37,21 +37,26 @@ ggsave(here("3.Report","unemployment_stayathome.png"), width = 7, height = 4, dp
 # Plot: Unemployement Data Sources: County-level Characteristics ----------
 
 
-data_summary %>%  ggplot( aes(y = indicator , x = value_use)) +
-  geom_bar_pattern(aes(pattern = benchmark ), width = 0.4, stat="identity", fill = "gray")  +
+data_summary1 <- data_summary %>% 
+  mutate(benchmark = ifelse(indicator == "pop", "Benchmark", "Unemployment Data Sources"))
+
+data_summary1 %>%  ggplot( aes(y = indicator , x = value_use)) +
+  geom_bar(aes(fill = benchmark), width = 0.4, 
+           stat="identity",  color = "black")  +
   scale_y_discrete(labels = c("pop" = "All Counties",
                               "ui" = "Unemployment Insurance", 
                               "pay" = "Payroll", 
                               "cps" = "Current Population Survey"))+
-  scale_pattern_manual(values = c(Benchmark = "stripe", `Other Data Sources` = "none"))+ 
+  scale_fill_manual(values = c("white", "grey"))+
   scale_alpha_manual(values = c(0.6,1)) +
   facet_wrap(~facet, scales = "free_x") + 
   theme_minimal()+  
   labs(x = "", y = "", title = "Unemployement Data Sources: County-level Characteristics" ) +
   theme(legend.position = "top", 
         axis.title.y = element_blank(),
-        plot.title = element_text(size = rel(1.3), hjust = 0.5)) +
-  guides(pattern =guide_legend(title=""))
+        plot.title = element_text(size = rel(1.3), hjust = 0.2)) +
+  guides(fill =guide_legend(title=""))
+
 
 
 ggsave(here("3.Report","data_representatives.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
@@ -118,9 +123,9 @@ plot %>%
   scale_x_continuous(breaks = seq(1,10,1), 
                      labels = function(x)month.abb[x])+
   labs(x = "", y = "Rate %", 
-       title = "2020 The Impact of BAIT on Unemployment Rate \n After Stay-at-home Enforcement  ")+
+       title = "2020 The Impact of BAIT on Unemployment Rates \n After Stay-at-home Enforcement  ")+
   scale_color_manual(name = "Business Access to IT (BAIT)", 
-                     labels = c("Low", "Hight"),values=c( "red", "blue")) +
+                     labels = c("Low", "High"),values=c( "red", "blue")) +
   theme_minimal() + 
   theme(plot.title = element_text(size = rel(1.2), hjust = 0.5, ),
         legend.title = element_text(size = rel(1)),
@@ -131,7 +136,7 @@ plot %>%
         axis.title.x = element_text(size = rel(1.2)),
         plot.caption = element_text(size = rel(1), hjust = 0),
         legend.position = "top") +
-  labs(caption = "Note: Unemployment rate =  Number of initial unemployment insurance (UI) claims per 100 people in the 2019 labor force.") +
+  labs(caption = "Note: Unemployment rates =  Number of initial unemployment insurance (UI) \n claims per 100 people in the 2019 labor force.") +
   geom_vline(xintercept = 3,
              color =  "#191970", size=1.2, linetype="dashed") + 
   annotate("text", x = 1.8, y = 2.8, label = "Before", size = 4)+

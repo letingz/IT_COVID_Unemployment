@@ -116,7 +116,6 @@ g ln_income = log(medianhouseholdincome+1)
 save "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_week_panel_aug_analysis.dta"
 
 
-labvars tre q4_high_it_budget_median q4_high_its_emps_all "After Stay at Home" "High IT Budget" "High ITS Employees"
 
 labvars initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop "Unemployment Count" "Unemployment Rate" "Employment Level"  "COVID Death Rate" "COVID New Case Rate" "Stay at Home Index"
 
@@ -149,7 +148,6 @@ local matchvar "population medianhouseholdincome internetper totalhousehold empl
 keep county  `usevar'
 duplicates drop
 drop if q4_high_it_budget_median == .
-
 
 
 cem population(#10) medianhouseholdincome(#10) internetper(#5) totalhousehold(#5) emple_median(#5) reven_median(#5) agriculture(#3) construction(#3) manufacturing(#3) wholesale(#3) retail(#3) transportation(#3) information(#3) insurance(#3) ,tre( q4_high_it_budget_median )
@@ -197,92 +195,15 @@ keep if cem_strata_strict == 112 | cem_strata_relax == 81
 
 
 
-
- 
-
-  
- 
-* Adjecent county 
-
-use "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\adjacent_county_info.dta" 
-joinby county using "C:\Users\Leting\Documents\Covid-Cyber-Unemploy\Stata\county_weekly_ui.dta", unmatched(none)
-
- 
----------------------------------
-areg initclaims_rate_regular tre tre##q4_high_its_emp_percap avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
-areg initclaims_rate_regular tre tre##q2_high_its_emp_percap|q4_high_it_budget_medium|q4_high_it_budget_per_emp_mean|tre#q2_high_it_budget_mean avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
-areg initclaims_count_regular tre tre##q4_high_its_percap tre##c.population avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
-areg initclaims_count_regular tre tre##q2_high_it_budget_medium tre##c.population avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
-
-
-areg emp_combined tre tre##q4_high_it_budget_percap avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
-areg emp_combined tre tre##q4_high_it_budget_mean  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-1
-
-local it " q4_high_it_budget_mean q2_high_it_budget_mean q4_high_it_budget_per_emp_mean q2_high_it_budget_per_emp_mean q4_high_it_budget_medium q2_high_it_budget_medium "
-foreach i of local it {
-areg initclaims_rate_regular tre tre##`i' avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-}
-
-
-
-local var "q4_high_it_budget_pop q2_high_it_budget_pop q4_high_it_budget_percap q2_high_it_budget_percap q4_high_it_budget_mean q2_high_it_budget_mean q4_high_it_budget_per_emp_mean q2_high_it_budget_per_emp_mean q4_high_it_budget_median q2_high_it_budget_median q4_high_its_emps q2_high_its_emps q4_high_its_emp_percap q4_high_its_emptotal_percap q4_high_it_budget_wpop q2_high_it_budget_wpop q4_high_its_empstotal q2_high_its_empstotal"
-
-foreach i of local var {
-    
-	areg emp_combined_inclow tre tre##`i' `con' i.week, absorb(county) rob
-}
- 
- 
-** Table 1: Main analyses
-
-** Continuous
-
-
-areg initclaims_rate_regular tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-areg emp_combined tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-areg initclaims_count_regular tre tre##c.its_emps_all_per_cap  tre##c.population  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
-
-areg initclaims_rate_regular tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-areg emp_combined tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
-
-* Binary
-
-areg initclaims_count_regular tre tre##c.q2_high_its_pop  tre##c.population  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-areg emp_combined_incmiddle tre tre##c.q2_high_it_budget_pop avg_new_death_rate avg_new_case_rate gps_away_from_home i.week, absorb(county) rob
-areg emp_combined_inclow tre tre##c.q2_high_it_budget_pop avg_new_death_rate avg_new_case_rate gps_away_from_home i.week, absorb(county) rob /*?Problematic*/
-
-
-
-
-
-** Outernal
-
-** Table 2: 
-
-
-areg initclaims_rate_regular tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-areg emp_combined tre tre##c.its_emps_all_per_cap  avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-
-** Event study
-
-q4_high_it_budget_medium 
-q2_high_it_budget_medium
-
-
 **# Label 
 
 
-label variable ln_it_budget_median "IT Budget"
+labvars tre q4_high_it_budget_median q4_high_its_emps_all "After Stay at Home" "HighBAIT" "HighBAIT (IT Service Employees)"
 
-label variable ln_its_emps "IT Services Employees"
+
+label variable ln_it_budget_median "BAIT"
+
+label variable ln_its_emps "Alternative BAIT (IT Service Employees)"
 
 
 label variable internetper "Internet Coverage"
@@ -307,99 +228,6 @@ label var ln_com_emp "IT equipment employees"
 // }
 //
 
-
-**#Experiment 
-
-* Unemployment rate VS ITS emp : only q4_high_it_budget_wpop q2_high_it_budget_wpop does not work
-local it " q4_high_its_emps q2_high_its_emps q4_high_its_emp_percap q4_high_its_emptotal_percap q4_high_it_budget_wpop q2_high_it_budget_wpop q4_high_its_empstotal q2_high_its_empstotal "
-foreach i of local it {
-qui areg initclaims_rate_regular tre tre##`i' avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-est table, keep(tre tre##`i') b se
-} 
-
-* Unemployment rate VS IT budget
-* Work: q2_high_it_budget_mean q2_high_it_budget_medium q2_high_it_budget_per_emp_mean q4_high_it_budget_mean q4_high_it_budget_medium q4_high_it_budget_per_emp_mean 
-
-local it " q2_high_it_budget_mean q2_high_it_budget_medium q2_high_it_budget_per_emp_mean q2_high_it_budget_percap q2_high_it_budget_pop q2_high_it_budget_wpop q4_high_it_budget_mean q4_high_it_budget_medium q4_high_it_budget_per_emp_mean q4_high_it_budget_percap q4_high_it_budget_pop q4_high_it_budget_wpop "
-foreach i of local it {
-qui areg initclaims_rate_regular tre tre##`i' avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-est table, keep(tre tre##`i') b se
-}
-
-
-*Employment rate vs ITS : only  q4_high_it_budget_wpop q2_high_it_budget_wpop works = = ....
-local it " q4_high_its_emps q2_high_its_emps q4_high_its_emp_percap q4_high_its_emptotal_percap q4_high_it_budget_wpop q2_high_it_budget_wpop q4_high_its_empstotal q2_high_its_empstotal "
-foreach i of local it {
-qui areg emp_combined tre tre##`i' avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-est table, keep(tre tre##`i') b se
-}
-
-* Employment rate VS IT budget
-* Work:  q2_high_it_budget_percap q2_high_it_budget_pop  q2_high_it_budget_wpop q4_high_it_budget_percap q4_high_it_budget_pop q4_high_it_budget_wpop
-local it " q2_high_it_budget_mean q2_high_it_budget_medium q2_high_it_budget_per_emp_mean q2_high_it_budget_percap q2_high_it_budget_pop q2_high_it_budget_wpop q4_high_it_budget_mean q4_high_it_budget_medium q4_high_it_budget_per_emp_mean q4_high_it_budget_percap q4_high_it_budget_pop q4_high_it_budget_wpop "
-foreach i of local it {
-qui areg initclaims_rate_regular tre tre##`i' avg_new_death_rate avg_new_case_rate avg_home_prop i.week, absorb(county) rob
-est table, keep(tre tre##`i') b se
-}
-
-* Reg save WIDE
-tempfile results_tbl
-local num = 1
-local replace replace
-local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it "q4_high_it_budget_pop q2_high_it_budget_pop q4_high_it_budget_percap q2_high_it_budget_percap q4_high_it_budget_mean q2_high_it_budget_mean q4_high_it_budget_per_emp_mean q2_high_it_budget_per_emp_mean q4_high_it_budget_medium q2_high_it_budget_medium q4_high_its_emps q2_high_its_emps q4_high_its_emp_percap q4_high_its_emptotal_percap q4_high_it_budget_wpop q2_high_it_budget_wpop q4_high_its_empstotal q2_high_its_empstotal q2_high_its_emptotal_percap q2_high_its_emp_percap"
-local dv "initclaims_rate_regular emp_combined initclaims_count_regular"
-foreach i of local it  {
-    foreach d of local dv {
-	    areg `d'  tre tre##`i' `con', absorb(county) rob
-		regsave using "`results_tbl'", pval autoid `replace' addlabel(it,"`i'",dv,"`d'") table(col_`num', asterisk(5 1) parentheses(stderr))
-		local replace append
-		local num = `num'+1
-		}
-}
-
-use "`results_tbl'", clear
-list
-
-
-
-
-
-*Reg save long
-
-tempfile results_tbl
-local replace replace
-local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it "q4_high_it_budget_pop q2_high_it_budget_pop q4_high_it_budget_percap q2_high_it_budget_percap q4_high_it_budget_mean q2_high_it_budget_mean q4_high_it_budget_per_emp_mean q2_high_it_budget_per_emp_mean q4_high_it_budget_medium q2_high_it_budget_medium q4_high_its_emps q2_high_its_emps q4_high_its_emp_percap q4_high_its_emptotal_percap q4_high_it_budget_wpop q2_high_it_budget_wpop q4_high_its_empstotal q2_high_its_empstotal q2_high_its_emptotal_percap q2_high_its_emp_percap"
-local dv "initclaims_rate_regular emp_combined initclaims_count_regular"
-
-foreach i of local it  {
-    foreach d of local dv {
-	    areg `d'  tre tre##`i' `con', absorb(county) rob
-		regsave using "`results_tbl'", pval autoid `replace' addlabel(it,"`i'",dv,"`d'") table(col_`num', asterisk(5 1) parentheses(stderr))
-		local replace append
-		local num = `num'+1
-		}
-}
-
-
-tempfile results
-local replace replace
-local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
-local it "q4_high_it_budget_pop q2_high_it_budget_pop q4_high_it_budget_percap q2_high_it_budget_percap q4_high_it_budget_mean q2_high_it_budget_mean q4_high_it_budget_per_emp_mean q2_high_it_budget_per_emp_mean q4_high_it_budget_medium q2_high_it_budget_medium q4_high_its_emps q2_high_its_emps q4_high_its_emp_percap q4_high_its_emptotal_percap q4_high_it_budget_wpop q2_high_it_budget_wpop q4_high_its_empstotal q2_high_its_empstotal q2_high_its_emptotal_percap q2_high_its_emp_percap"
-local dv "initclaims_rate_regular emp_combined initclaims_count_regular"
-
-
-foreach i of local it  {
-    foreach d of local dv {
-		areg `d'  tre tre##`i' `con', absorb(county) rob
-		regsave tre  using "`results'", pval autoid `replace' addlabel(treat,"`i'",outcome,"`d'") 
-		local replace append
-	}
-}
-
-use "`results'", clear
-list
 
 
 **# Try frames
