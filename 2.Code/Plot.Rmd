@@ -171,8 +171,6 @@ data_summary <- data_summary %>%
                                       "population" = "Population/1000", 
                                       "totalhousehold" = "Total Household/1000") )
 
-data_summary$indicator <- factor(data_summary$indicator, level = c("pop", "pay", "cps", "ui" ))
-
 data_summary$indicator <- factor(data_summary$indicator, level = c("cps", "pay", "ui", "pop" ))
 data_summary <- data_summary %>% 
   mutate(benchmark = ifelse(indicator == "pop", "Benchmark", "Other Data Sources"))
@@ -180,11 +178,11 @@ data_summary <- data_summary %>%
 
 ```{r Plot}
 
-
-library(ggpattern)
+#library(ggpattern)
 
 data_summary %>%  ggplot( aes(y = indicator , x = value_use)) +
-                  geom_bar_pattern(aes(pattern = benchmark ), width = 0.4, stat="identity", fill = "gray")  +
+                  geom_bar_pattern(aes(pattern = benchmark), width = 0.4, 
+                                   stat="identity", fill = "white", color = "black")  +
                   scale_y_discrete(labels = c("pop" = "All Counties",
                                               "ui" = "Unemployment Insurance", 
                                               "pay" = "Payroll", 
@@ -199,7 +197,27 @@ data_summary %>%  ggplot( aes(y = indicator , x = value_use)) +
                         plot.title = element_text(size = rel(1.3), hjust = 0.5)) +
                   guides(pattern =guide_legend(title=""))
 
-#scale_fill_manual(values = c("red","red","red","red")) +
+
+data_summary1 <- data_summary %>% 
+  mutate(benchmark = ifelse(indicator == "pop", "Benchmark", "Unemployment Data Sources"))
+
+data_summary1 %>%  ggplot( aes(y = indicator , x = value_use)) +
+                  geom_bar(aes(fill = benchmark), width = 0.4, 
+                                   stat="identity",  color = "black")  +
+                  scale_y_discrete(labels = c("pop" = "All Counties",
+                                              "ui" = "Unemployment Insurance", 
+                                              "pay" = "Payroll", 
+                                              "cps" = "Current Population Survey"))+
+                  scale_fill_manual(values = c("white", "grey"))+
+                  scale_alpha_manual(values = c(0.6,1)) +
+                  facet_wrap(~facet, scales = "free_x") + 
+                  theme_minimal()+  
+                  labs(x = "", y = "", title = "Unemployement Data Sources: County-level Characteristics" ) +
+                  theme(legend.position = "top", 
+                        axis.title.y = element_blank(),
+                        plot.title = element_text(size = rel(1.3), hjust = 0.3)) +
+                  guides(fill =guide_legend(title=""))
+
 
 ```
 
@@ -353,7 +371,7 @@ plot %>%
              labs(x = "", y = "Rate %", 
        title = "2020 The Impact of BAIT on Unemployment Rate \n After Stay-at-home Enforcement  ")+
   scale_color_manual(name = "Business Access to IT (BAIT)", 
-                     labels = c("Low", "Hight"),values=c( "red", "blue")) +
+                     labels = c("Low", "High"),values=c( "red", "blue")) +
   theme_minimal() + 
   theme(plot.title = element_text(size = rel(1.2), hjust = 0.5, ),
         legend.title = element_text(size = rel(1)),

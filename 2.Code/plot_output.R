@@ -151,3 +151,7 @@ plot %>%
 
 ggsave(here("3.Report","bait_unemployment.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
 
+# Plot: Synthetic Control Method 
+
+plot(out, type = "ct", raw = "none", main = "", shade.post = FALSE)
+ggsave(here("3.Report","scm.png"), width = 7, height = 4, dpi = 300, units = "in", device='png')
