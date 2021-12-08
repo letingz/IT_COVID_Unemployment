@@ -24,6 +24,7 @@ out_data_path <- here("1.Data","3.output_data")
 
 # TODO LIST 
 
+
 ############# IMPORT & CLEAN DATA ###############
 
 ####### Import Economic Indicator - EconomicTracker ########
@@ -207,6 +208,20 @@ geo_code <- read.csv(here(raw_data_path,"geocorr2018 -crosswalk.csv"))
 #source: https://www.huduser.gov/portal/datasets/usps_crosswalk.html
 zip_county <- read.csv(here(raw_data_path, "ZIP_COUNTY_122019.csv"))
 
+
+#source: https://www.huduser.gov/portal/datasets/usps_crosswalk.html
+zip_county <- read.csv(here(raw_data_path, "ZIP_COUNTY_122019.csv"))
+
+
+zip_county_use <- zip_county %>%  # if a ZIP code belongs to two COUNTY, chose the COUNTY with higher proportion. 
+  select(ZIP, COUNTY, RES_RATIO) %>% 
+  group_by(ZIP) %>% 
+  mutate(numcounty = n(), 
+         max_ratio = max(RES_RATIO)) %>% 
+  filter(RES_RATIO == max_ratio) %>% select(c(ZIP, COUNTY)) %>% 
+  as.data.frame()
+
+
 #source: https://data.nber.org/cbsa-msa-fips-ssa-county-crosswalk/2019/
 msa_county <- read.csv(here(raw_data_path, "COUNTY_METRO2019.CSV"))
 
@@ -217,11 +232,11 @@ geoid <- read.csv(here(raw_data_path, "GeoIDs - County.csv"), stringsAsFactors =
 
 ####### Import ACS (American Community Survey) file #######
 
-source(here("2.Code", "census_bls_api_data.R")) 
+#source(here("2.Code", "census_bls_api_data.R")) 
 
 library(tidycensus)
 
-usethis::edit_r_environ()
+#usethis::edit_r_environ()
 # CENSUS_API_KEY = c398f8d9513b22463637096597e4bd7ea0be7e4f
 
 all_vars_acs5_19 <- 
@@ -339,6 +354,26 @@ median_home_7day_use <- median_home_time_7dav %>% select(geo_value, time_value, 
 
 rm(home_prop_7day, median_home_time_7dav)
 
+ 
+
+
+####### Import Telework index data from DingelNeiman  #######
+
+#Source: https://github.com/jdingel/DingelNeiman-workathome/blob/d5827e15f6c84589e1884c5e9c3bc88253143015/MSA_measures/output/MSA_workfromhome.csv
+
+msa_telework <- read.csv(here(raw_data_path, "MSA_workfromhome.csv"))
+county_telework <- msa_county %>% 
+  left_join(msa_telework, by = c("CBSA" = "AREA"))
+
+
+county_telework <- county_telework %>% 
+  select(County.Name, State, FIPS.County.Code,CBSA, CBSA.Name, teleworkable_emp, teleworkable_manual_emp) %>% 
+  rename(county_name = County.Name, 
+         state = State,
+         countyfips = FIPS.County.Code,
+         cbsa = CBSA,
+         cbsa_name = CBSA.Name)
+
 
 
 #### Save
@@ -371,7 +406,7 @@ ci_data_key$ZIPCODE <- substr(ci_site[, c("SITEID","ZIPCODE")]$ZIPCODE,1,5)
 ci_data_key$ZIPCODE <- sub("^0+", "", ci_data_key$ZIPCODE)
 ci_data_key$ZIPCODE <- as.integer(ci_data_key$ZIPCODE)
 
-ci_data_key <- merge(ci_data_key, zip_county[, c("ZIP", "COUNTY")], by.x = "ZIPCODE", by.y = "ZIP", all.x = TRUE, allow.cartesian=TRUE)
+ci_data_key <- merge(ci_data_key, zip_county_use[, c("ZIP", "COUNTY")], by.x = "ZIPCODE", by.y = "ZIP", all.x = TRUE, allow.cartesian=TRUE)
 ci_data_key <- merge(ci_data_key, msa_county, by.x = "COUNTY", by.y = "FIPS.County.Code",all.x = TRUE, allow.cartesian=TRUE )
 
 
@@ -490,7 +525,8 @@ county_week_panel <- ui_county_week %>%
   full_join(ci_county_all, by = c("countyfips" = "COUNTY")) %>% 
   full_join(policy_state_county, by = c("countyfips" = "FIPS")) %>% 
   full_join(county_qwi_use, by = c("countyfips" = "geography" )) %>% select(-c( geo_value)) %>% 
-  full_join(county_acs)
+  full_join(county_acs) %>% 
+  full_join(county_telework)
 
 county_week_panel_use <-  county_week_panel %>% select(-c(year.x, year.y)) 
 
