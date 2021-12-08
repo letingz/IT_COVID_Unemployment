@@ -286,9 +286,6 @@ write.csv(state_qwi_agg,here(out_data_path , "state_qwi_agg.csv"))
 ######## Import & Clean: CI Database  ########
 ci_path <- "C:/Users/Leting/Documents/CI_Investment/1.Data/1.raw_data/USA_2019"
 
-# Import CI cyber data
-ci_cyber <- read.csv(here("1.Data/2.intermediate_data", "CI_cyber_use.csv"))
-ci_cyber <- subset(ci_cyber, select = c('SITEID','cyber_sum', 'IT_STAFF','PCS'))
 
 # read CI site description data
 #ci_path <- readWindowsShortcut(here(raw_data_path,"USA_2019.lnk"))
@@ -299,15 +296,6 @@ col <-  c('SITEID', 'PRIMARY_DUNS_NUMBER', 'COMPANY', 'CITY','STATE','ZIPCODE', 
 ci_site <- fread(path, select = col)
 
 
-# Import CI app install presence data
-path <- paste(ci_path, '/PresenceInstall.TXT', sep = '')
-col <-  c('SITEID', 'VPN_PRES', 'IDACCESS_SW_PRES', 'DBMS_PRES', 'DATAWAREHOUSE_SW_PRES', 'SECURITY_SW_PRES')
-ci_presence <- fread(path, select = col)
-
-ci_presence[ci_presence == "Yes"] <- 1
-ci_presence[ci_presence == ""] <- 0
-ci_presence <- as.data.frame(ci_presence)
-ci_presence[, 2:6] <- sapply(ci_presence[, 2:6], as.numeric )
 
 # Import CI IT spend data
 path <- paste(ci_path, '/ITSpend.TXT', sep = '')
@@ -408,17 +396,6 @@ work_prop_7day <- suppressMessages(
                    geo_type = "county")
 )
 
-
-
-part_prop_7day <- suppressMessages(
-  covidcast_signal(data_source = "safegraph", signal = "part_time_work_prop_7dav",
-                   start_day = "2020-01-01", end_day = "2020-11-10",
-                   geo_type = "county")
-)
-
-
-
-
 median_home_time_7dav <- suppressMessages(
   covidcast_signal(data_source = "safegraph", signal = "median_home_dwell_time_7dav",
                    start_day = "2020-01-01", end_day = "2020-11-10",
@@ -426,36 +403,6 @@ median_home_time_7dav <- suppressMessages(
 )
 
 
-bar_visit_num <- suppressMessages(
-  covidcast_signal(data_source = "safegraph", signal = "bars_visit_num",
-                   start_day = "2020-01-01", end_day = "2020-11-10",
-                   geo_type = "county")
-)
-
-
-
-
-bars_visit_prop <- suppressMessages(
-  covidcast_signal(data_source = "safegraph", signal = "bars_visit_prop",
-                   start_day = "2020-01-01", end_day = "2020-11-10",
-                   geo_type = "county")
-)
-
-
-
-restaurants_visit_num <- suppressMessages(
-  covidcast_signal(data_source = "safegraph", signal = "restaurants_visit_num",
-                   start_day = "2020-01-01", end_day = "2020-11-10",
-                   geo_type = "county")
-)
-
-
-
-restaurants_visit_prop <- suppressMessages(
-  covidcast_signal(data_source = "safegraph", signal = "restaurants_visit_prop",
-                   start_day = "2020-01-01", end_day = "2020-11-10",
-                   geo_type = "county")
-)
 
 
 # Import job posting data -------------------------------------------
@@ -497,8 +444,6 @@ ci_data_key <- merge(ci_data_key, zip_county_use[, c("ZIP", "COUNTY")], by.x = "
 
 ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>% 
   full_join(ci_site) %>% 
-  full_join(ci_cyber) %>% 
-  full_join(ci_presence) %>% 
   full_join(ci_itspend) %>% 
   #left_join(adopttech_19 %>% select(!contains("per_emp"), -c(division, division_name, EMPLE,COUNTY)) )
   left_join(adopttech_19v2 %>% select(!contains("per_emp"), -c(EMPLE, COUNTY, SIC3_CODE) ) )
@@ -506,27 +451,26 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
 
 
 # Create no winsorzied measurements
-ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN, PCS,
+ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
                           IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET,
                           contains("number_app")) %>% 
   filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
   group_by(COUNTY) %>% 
   summarise(count = n(), 
             #across(EMPLE:number_app_Network, mean, na.rm = TRUE, .names = "{col}_mean"), # create mean -ABONDON
-            across(EMPLE:number_app_Infrastructure, median, na.rm = TRUE, .names = "{col}_median")) #create median %>% 
+            across(EMPLE:number_app_Infrastructure, median, na.rm = TRUE, .names = "{col}_median"))%>%  #create median 
   ungroup()
             
   # create mean - this command is useful
   # across(EMPLE:it_budget_per_emp, sum, na.rm =TRUE, .names = "{col}_sum" ) ) %>%  
   # mutate(across(ends_with("sum"), .fns = list( per_site = ~./count), .names = "{col}_{fn}",na.rm = TRUE)
 
-# Create winsorzied measurements - Abondon
 
 
-ci_data_per_emp <- ci_data_use %>% select(SITEID, COUNTY, EMPLE, REVEN, PCS, IT_BUDGET, HARDWARE_BUDGET, 
+ci_data_per_emp <- ci_data_use %>% select(SITEID, COUNTY, EMPLE, REVEN, IT_BUDGET, HARDWARE_BUDGET, 
                        SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
                  filter(EMPLE != 0 &  IT_BUDGET !=0) %>%
-                 mutate(pc_per_emp = PCS/EMPLE,
+                 mutate(
                   across(ends_with("BUDGET"), .fns = list( per_emp = ~./EMPLE), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
                  select ( -c(ends_with("BUDGET"))) %>% 
                  left_join(adopttech_19v2) %>% 
@@ -534,7 +478,7 @@ ci_data_per_emp <- ci_data_use %>% select(SITEID, COUNTY, EMPLE, REVEN, PCS, IT_
 
 ci_summarise_per_emp <-  ci_data_per_emp %>% 
   group_by(COUNTY) %>% 
-  summarise(across(pc_per_emp: number_app_per_emp_Infrastructure, median, 
+  summarise(across(IT_BUDGET_per_emp: number_app_per_emp_Infrastructure, median, 
                    na.rm = TRUE, .names = "{col}_median")) %>%
   ungroup() %>% 
   rename_at( .vars = vars(starts_with("number_app_per_emp_")), # reduce the length of name
@@ -639,48 +583,21 @@ work_prop_7day_use <- work_prop_7day %>% select(geo_value, time_value, value) %>
   group_by(week, geo_value) %>% 
   summarise(avg_work_prop = mean(value, na.rm = TRUE)) %>% ungroup()
 
-part_prop_7day_use <- part_prop_7day %>% select(geo_value, time_value, value) %>% 
-  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
-  group_by(week, geo_value) %>% 
-  summarise(avg_part_prop = mean(value, na.rm = TRUE)) %>% ungroup()
 
 median_home_7day_use <- median_home_time_7dav %>% select(geo_value, time_value, value) %>% 
   mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
   group_by(week, geo_value) %>% 
   summarise(avg_median_home = mean(value, na.rm = TRUE)) %>% ungroup()
 
-bar_visit_num_use <- bar_visit_num %>% select(geo_value, time_value, value) %>% 
-  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
-  group_by(week, geo_value) %>% 
-  summarise(avg_bar_visitnum = mean(value, na.rm = TRUE)) %>% ungroup()
-
-
-bar_visit_prop_use <- bars_visit_prop %>% select(geo_value, time_value, value) %>% 
-  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
-  group_by(week, geo_value) %>% 
-  summarise(avg_bar_visitprop = mean(value, na.rm = TRUE)) %>% ungroup()
-
-
-res_visit_num_use <- restaurants_visit_num %>% select(geo_value, time_value, value) %>% 
-  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
-  group_by(week, geo_value) %>% 
-  summarise(avg_res_visitnum = mean(value, na.rm = TRUE)) %>% ungroup()
-
-
-res_visit_prop_use <- restaurants_visit_prop %>% select(geo_value, time_value, value) %>% 
-  mutate(week =  week(as.Date(time_value, "%Y-%m-%d"))) %>% 
-  group_by(week, geo_value) %>% 
-  summarise(avg_res_visitprop = mean(value, na.rm = TRUE)) %>% ungroup()
 
 
 safegraph_week <- home_prop_7day_use %>% 
   full_join(work_prop_7day_use) %>% 
-  full_join(part_prop_7day_use) %>% 
-  full_join(median_home_7day_use) %>% 
-  full_join(bar_visit_num_use) %>% 
-  full_join(bar_visit_prop_use) %>% 
-  full_join(res_visit_num_use) %>% 
-  full_join(res_visit_prop_use)
+  full_join(home_prop_7day_use) %>% 
+  full_join(median_home_7day_use) 
+ 
+
+rm(work_prop_7day, home_prop_7day_use, median_home_time_7dav)
 
 safegraph_week$countyfips <- as.numeric( safegraph_week$geo_value)
 
