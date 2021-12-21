@@ -5,10 +5,11 @@ date: "5/1/2021"
 output: html_document
 ---
 
-```{r}
+```{r Description}
 # Descriptive analyses
 # Sample & Correlation visualization
-# 
+
+install.packages("gtsummary")
 ```
 
 
@@ -28,12 +29,100 @@ library(haven)
 library(kableExtra)
 library(modelsummary)
 library(flextable)
+library(gtsummary)
+library(labelled)
 ```
 
 
 
 ```{r Load data}
 load("~/2. Covi_IT_Unemploy/0603weekly.RData")
+```
+# Summarize ci database
+
+```{r read the data}
+ci_path <- "C:/Users/Leting/Documents/CI_Investment/1.Data/1.raw_data/USA_2019"
+
+# read CI site description data
+
+path <- paste(ci_path, '/SiteDescription.TXT', sep = '')
+col <-  c('SITEID', 'EMPLE','REVEN','SICGRP', 'SICSUBGROUP')
+ci_site <- fread(path, select = col)
+
+
+psych::describe(ci_site[, c('EMPLE', 'REVEN')])
+
+ci_site <- ci_site %>% 
+  mutate(size_group = case_when(
+      between(EMPLE, 0, 50) ~ "0 to 50",
+      between(EMPLE, 50, 100) ~ "50 to 100",
+      between(EMPLE, 100, 500) ~ "100 to 500",
+      between(EMPLE, 500, 1000) ~ "500 to 1000",
+      EMPLE> 1000 ~ ">1000"
+      
+  ),
+       rev_group = case_when(
+         between(REVEN, 0, 5) ~ "0 to 5",
+         between(REVEN, 5, 10 ) ~ "5 to 10",
+         between(REVEN, 10, 50 ) ~ "10 to 50",
+         between(REVEN, 50, 100 ) ~ "50 to 100",
+         REVEN>100 ~ "> 100"))
+
+```
+
+
+```{r CI Summary statistics: Revenue, Size}
+library(ggpubr)
+
+
+positions <- c("0 to 50", "50 to 100", "100 to 500", "500 to 1000", ">1000")
+
+ci_site %>% 
+  group_by(size_group) %>% 
+  summarise(counts = n()) %>% 
+  arrange(desc(counts)) %>% 
+  ggplot(aes(x = size_group, y = counts)) +
+  scale_x_discrete(limits = positions) +
+  geom_bar(stat = "identity")  + 
+  theme_pubclean()
+
+
+positions <- c("0 to 5", "5 to 10", "10 to 50", "50 to 100", ">100")
+
+ci_site %>% 
+  group_by(rev_group) %>% 
+  summarise(counts = n()) %>% 
+  arrange(desc(counts)) %>% 
+  ggplot(aes(x = rev_group, y = counts)) +
+  scale_x_discrete(limits = positions) +
+  geom_bar(stat = "identity")  + 
+  theme_pubclean()
+
+```
+```{r CI Summary statistics : Industries}
+
+ci_site %>% 
+  group_by(SICGRP) %>% 
+  summarise(counts = n()) %>% 
+  arrange(desc(counts)) %>% 
+  ggplot(aes(x = SICGRP, y = counts)) +
+ # scale_x_discrete(limits = positions) +
+  geom_bar(stat = "identity")  + 
+  coord_flip()+
+  theme_pubclean()
+
+
+ci_site %>% 
+  group_by(SICSUBGROUP) %>% 
+  summarise(counts = n()) %>% 
+  arrange(desc(counts)) %>% 
+  ggplot(aes(x = reorder(SICSUBGROUP, counts), y = counts )) +
+ # scale_x_discrete(limits = positions) +
+  geom_bar(stat = "identity")  + 
+  coord_flip()+
+  theme_pubclean()
+
+
 ```
 
 
@@ -206,7 +295,8 @@ sample_pop_diff <- county_pop_median %>%
   mutate(county_appear_time = n()) %>% 
   arrange(COUNTY) %>% 
   mutate(not_in_sample = ifelse(county_appear_time == 2, 0, 1)) %>% 
-  distinct()
+  distinct() %>% 
+  ungroup()
 
 # Copy the table directly is better than export
 datasummary((`No. Establishments`= count)+
@@ -236,8 +326,6 @@ datasummary((`No. Establishments`= count)+
 
  #   "Software Budget", "IT Service Budget", "IT Service Employees",
 
-
-datasummary((`No. Establishments`= count) ~ (`Sample`=Factor(not_in_sample))* mean, data= sample_pop_diff)
 
 ```
 
@@ -274,15 +362,47 @@ write.csv(t.test, here("3.Report", "samplepopttest.csv")) # use this stat in tab
 ```
 
 ```{r}
-demo <- sample_pop_long %>% filter(variable  == "count")
+var_label(sample_pop_diff ) <- list(count = "No. Establishment",
+                                    EMPLE_median = "No. Employees",
+                                    REVEN_median = "Revenue",
+                                    IT_BUDGET_median = "IT Budget",
+                                    HARDWARE_BUDGET_median = "Hardware Budget",
+                                    SOFTWARE_BUDGET_median = "Software Budget",
+                                    SERVICES_BUDGET_median = "Service Budget",
+                                    `AG-M-C` = "Agriculture",
+                                    EDUC = "Education",
+                                    `F-I-RE` = "Finance/Insurance",
+                                    GOVT = "Government",
+                                    MANUF = "Manufacturing",
+                                    MED = "Medicare",
+                                    SVCS = "Services",
+                                    `TR-UTL` = "Transportation/Utilities",
+                                    `WHL-RT` = "Wholesale/Retailers",
+                                    its_emps_all = "IT Service Employees")
+    
 
 
+tbl <- sample_pop_diff %>% 
+  select(-c(COUNTY, count_county_estab_median, 
+            it_budget_per_emp_median, count_total_est, 
+            `NON-CL`, totalhousehold, population,
+            internetper, medianhouseholdincome,
+            meanincome, county_appear_time )) %>% 
+  tbl_summary(by = not_in_sample,
+     statistic = list(all_continuous() ~ "{mean} ({sd})"),
+     type = list(REVEN_median ~ "continuous"),
+                  digits = all_continuous() ~ 2,
+     missing = "no") %>% 
+  add_p( test = everything() ~ "t.test") 
 
-demo %>% 
-  select(-COUNTY) %>% 
-t_test(value ~ not_in_sample)  
+tbl
 
 
+tbl %>%
+  as_gt() %>%
+  gt::gtsave( filename = here("3.Report", "appendix_sample_pop.rtf"))
+  # as_flex_table() %>%
+  # save_as_docx(path =here("3.Report", "appendix_sample_pop.docx"))
 ```
 
 
