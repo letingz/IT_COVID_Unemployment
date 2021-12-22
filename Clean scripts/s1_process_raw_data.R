@@ -6,6 +6,8 @@
 # output: R data
 
 
+####### DESCRIPTION ########
+
 ####### LOAD LIBRARY ########
 
 library(tidyverse)
@@ -79,7 +81,7 @@ shelterdate$OrderDay <- as.integer(shelterdate$OrderDay)
 #source: https://github.com/JieYingWu/COVID-19_US_County-level_Summaries
 #After converting date format in python 
 
-county_policy <- read.csv(here( "1.Data", "2.intermediate_data", "county_shutdown.csv"))
+county_policy <- read.csv(here(raw_data_path, "county_shutdown.csv"))
 
 county_policy <- county_policy %>% filter(FIPS != 0) %>% 
   mutate(year = 2020, 
@@ -98,9 +100,8 @@ policy_state_county <- policy_state_county %>% select(abb, FIPS, statepolicy_wee
 ######## Import Covid19 Data from Economic Tracker ########
 
 covid_county <- read.csv(here(raw_data_path, "EconomicTracker-main/data/COVID - County - Daily.csv"), stringsAsFactors = F)
-#covid_state <- read.csv(here(raw_data_path, "EconomicTracker-main/data/COVID - State - Daily.csv"), stringsAsFactors = F)
 covid_county <- covid_county%>% mutate_if(is.character,as.numeric)
-#covid_state<- covid_state%>% mutate_if(is.character,as.numeric)
+
 
 ######## Import & Clean: IT Workforce Data from QWI  ########
 
@@ -189,11 +190,11 @@ ci_itspend <- ci_itspend %>%
   mutate_if(is.integer64, as.numeric)
 
 
-# Import 2019 IT group data (processed in HPC center "covid_tech_analyses.Rmd" )
+# Import 2019 IT group data (processed in HPC center "covid_tech_analyses_new_task.Rmd" cell 19 - 21 )
 
 #adopttech_19 <- readRDS("~/Covid-Cyber-Unemploy/1.Data/1.raw_data/adopttech_19_site_techgroup.rds")
 
-adopttech_19v2 <- readRDS(here(raw_data_path, "adopttech_19_site_techgroup_ver2.rds"))
+county_adopttech_19 <- readRDS(here(raw_data_path, "it_app_Dec2021.rds"))
 
 
 
@@ -204,10 +205,6 @@ adopttech_19v2 <- readRDS(here(raw_data_path, "adopttech_19_site_techgroup_ver2.
 #occupation_code<-read.csv("cps_monthly_data/2018-census-occupation-classification-titles-and-code-list.csv")
 
 geo_code <- read.csv(here(raw_data_path,"geocorr2018 -crosswalk.csv"))
-
-#source: https://www.huduser.gov/portal/datasets/usps_crosswalk.html
-zip_county <- read.csv(here(raw_data_path, "ZIP_COUNTY_122019.csv"))
-
 
 #source: https://www.huduser.gov/portal/datasets/usps_crosswalk.html
 zip_county <- read.csv(here(raw_data_path, "ZIP_COUNTY_122019.csv"))
@@ -237,7 +234,7 @@ geoid <- read.csv(here(raw_data_path, "GeoIDs - County.csv"), stringsAsFactors =
 library(tidycensus)
 
 #usethis::edit_r_environ()
-# CENSUS_API_KEY = c398f8d9513b22463637096597e4bd7ea0be7e4f
+#Use your census_api_key
 
 all_vars_acs5_19 <- 
   load_variables(year = 2019, dataset = "acs5/profile")
@@ -308,6 +305,53 @@ county_acs <- df_acs1 %>% filter(name %in% c("internetper", "meanincome", "media
                       )
 
 rm(df_acs, df,acs1)
+
+
+####### Import OEWS (Occupational Employment and Wage Statistics) from Bureau of LS #######
+#source: https://www.bls.gov/oes/
+
+oews <- readxl::read_xlsx(here(raw_data_path, "MSA_M2019_dl.xlsx"))
+oews_use <- oews %>% 
+  filter(o_group == "major") %>% 
+  select(area, area_title, occ_title, o_group, tot_emp, jobs_1000, loc_quotient) %>% 
+  mutate(area = as.numeric(area)) %>% 
+  left_join(msa_county[, c('FIPS.County.Code', 'CBSA')], by = c( 'area' = 'CBSA'))
+
+oews_use <- oews_use %>% 
+        mutate(occ_abb_title = case_when(
+          occ_title == "Management Occupations" ~ "manag_occ",
+          occ_title == "Business and Financial Operations Occupations" ~ "bus_fin_oc",
+          occ_title == "Computer and Mathematical Occupations" ~ "com_math_oc",
+          occ_title == "Architecture and Engineering Occupations" ~ "arch_engin_oc",
+          occ_title == "Life, Physical, and Social Science Occupations" ~ "life_phy_oc",
+          occ_title == "Community and Social Service Occupations" ~ "com_socser_oc",
+          occ_title == "Legal Occupations" ~ "legal_oc",
+          occ_title == "Educational Instruction and Library Occupations" ~ "edu_lib_oc",
+          occ_title == "Arts, Design, Entertainment, Sports, and Media Occupations" ~ "art_sport_oc",
+          occ_title == "Healthcare Practitioners and Technical Occupations" ~ "health_oc",
+          occ_title == "Healthcare Support Occupations" ~ "health_sup_oc",
+          occ_title == "Protective Service Occupations" ~ "protect_oc",
+          
+          occ_title == "Food Preparation and Serving Related Occupations" ~  "food_ser_oc", 
+          occ_title == "Building and Grounds Cleaning and Maintenance Occupations" ~ "buil_clean_oc",
+          occ_title == "Personal Care and Service Occupations" ~ "percare_ser_oc" ,
+          occ_title == "Sales and Related Occupations" ~ "sale_oc" ,
+          occ_title == "Office and Administrative Support Occupations" ~ "off_admin_oc",
+          occ_title == "Farming, Fishing, and Forestry Occupations" ~ "farm_fish_oc" ,
+          occ_title == "Construction and Extraction Occupations" ~ "construct_oc" ,
+          occ_title == "Installation, Maintenance, and Repair Occupations" ~ "inst_mainte_oc" ,
+          occ_title == "Production Occupations" ~ "prodct_oc",
+          occ_title == "Transportation and Material Moving Occupations" ~ "trans_oc"
+        )) %>% select(-occ_title)
+colnames(oews_use)[4] <- "county"
+
+oews_use <- oews_use %>%  
+        pivot_wider(
+        names_from = c(occ_abb_title), 
+        values_from = c(tot_emp,loc_quotient, jobs_1000)
+      )
+
+write_dta(oews_use, here("Stata", "oews_use.dta"))
 
 ####### Import CPS data from IPUMS #######
 
@@ -412,8 +456,8 @@ ci_data_key <- merge(ci_data_key, msa_county, by.x = "COUNTY", by.y = "FIPS.Coun
 
 ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>% 
   full_join(ci_site) %>% 
-  full_join(ci_itspend) %>% 
-  left_join(adopttech_19v2 %>% select(!contains("per_emp"), -c(EMPLE, COUNTY, SIC3_CODE) ) )
+  full_join(ci_itspend)# %>% 
+ # left_join(adopttech_19v2 %>% select(!contains("per_emp"), -c(EMPLE, COUNTY, SIC3_CODE) ) )
 
 
 ### Create county-level CI IT variables
@@ -421,13 +465,12 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
 
 # Create no winsorzied measurements
 ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
-                                            IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET,
-                                            contains("number_app")) %>% 
+                                            IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
   filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
   group_by(COUNTY) %>% 
   summarise(count = n(), 
             #across(EMPLE:number_app_Network, mean, na.rm = TRUE, .names = "{col}_mean"), # create mean -ABONDON
-            across(EMPLE:number_app_Infrastructure, median, na.rm = TRUE, .names = "{col}_median"))%>% #create median  
+            across(EMPLE:SERVICES_BUDGET, median, na.rm = TRUE, .names = "{col}_median"))%>% #create median  
   ungroup()
 
 # create mean - this command is useful
@@ -440,42 +483,32 @@ ci_data_per_emp <- ci_data_use %>% select(SITEID, COUNTY, EMPLE, REVEN, IT_BUDGE
   filter(EMPLE != 0 &  IT_BUDGET !=0) %>%
   mutate(
     across(ends_with("BUDGET"), .fns = list( per_emp = ~./EMPLE), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
-  select ( -c(ends_with("BUDGET"))) %>% 
-  left_join(adopttech_19v2) %>% 
-  select(SITEID, COUNTY, ends_with("per_emp"), starts_with("number_app_per_emp_") )
+  select ( -c(ends_with("BUDGET"))) 
 
 
 ci_summarise_per_emp <-  ci_data_per_emp %>% 
   group_by(COUNTY) %>% 
-  summarise(across(IT_BUDGET_per_emp: number_app_per_emp_Infrastructure, median, 
+  summarise(across(IT_BUDGET_per_emp: SERVICES_BUDGET_per_emp, median, 
                    na.rm = TRUE, .names = "{col}_median")) %>%
-  ungroup() %>% 
-  rename_at( .vars = vars(starts_with("number_app_per_emp_")), # reduce the length of name
-             .funs = funs(gsub("_app", "", ., fixed = TRUE)) ) 
-
-
+  ungroup() 
+#%>% rename_at( .vars = vars(starts_with("number_app_per_emp_")), # reduce the length of name
+        #     .funs = funs(gsub("_app", "", ., fixed = TRUE)) ) 
 
 
 ci_county_all <- ci_summarise_all %>%
   full_join(ci_summarise_per_emp) %>% 
-  mutate_if(is.integer64, as.numeric)
+  mutate_if(is.integer64, as.numeric) %>% 
+  left_join(county_adopttech_19, by = c("COUNTY" = "county"))
 
 # rename
 
-colnames(ci_county_all)[3:16] <- c("emple_median", "reven_median", "it_median", "hardw_median", 
-                                   "soft_median", "service_median",
-                                   "appdev_median", "enterp_median", "cloud_median", 
-                                   "produc_median", "market_median", "collab_median",
-                                   "security_median", "infra_median")
+colnames(ci_county_all)[3:8] <- c("emple_median", "reven_median", "it_median", "hardw_median", 
+                                   "soft_median", "service_median")
 
-colnames(ci_county_all)[17:28] <- c("it_per_median", "hardw_per_median", 
-                                    "soft_per_median", "service_per_median",
-                                    "appdev_per_median", "enterp_per_median", "cloud_per_median", 
-                                    "produc_per_median", "marketing_per_median", "collab_per_median",
-                                    "security_per_median", "infra_per_median")
+colnames(ci_county_all)[9:12] <- c("it_per_median", "hardw_per_median", 
+                                    "soft_per_median", "service_per_median")
 
 
-rm(ci_data_use, ci_site, ci_data_per_emp)
 
 ############# Aggregate and contruct county, weekly data #######
 
@@ -519,6 +552,8 @@ safegraph_week <- home_prop_7day_use %>%
 county_qwi_use <- county_qwi_agg 
 
 
+# Compile data and create the panel dataset
+
 county_week_panel <- ui_county_week %>% 
   full_join(covid_county_week) %>% 
   full_join(safegraph_week) %>% 
@@ -530,13 +565,15 @@ county_week_panel <- ui_county_week %>%
 
 county_week_panel_use <-  county_week_panel %>% select(-c(year.x, year.y)) 
 
-colnames(county_week_panel )
+# Add new dataset
+
+county_week_panel_use <-  county_week_panel %>% left_join(oews_use, by = c("countyfips" = "FIPS.County.Code"))
 
 #write.csv(county_week_panel, here(out_data_path, "county_week_panel_aug.csv"))
 
-write_dta(county_week_panel_use, here("Stata", "county_week_panel_dec.dta"))
+write_dta(county_week_panel_use, here("Stata", "county_week_panel_dec_streamed.dta"))
 
 
 
-
+county_week_panel <- read_dta(here("Stata", "county_week_panel_dec_streamed.dta"))
 

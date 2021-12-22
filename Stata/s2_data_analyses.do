@@ -10,7 +10,7 @@
 **# One key run some script? 
 
 
-local filename "result/report_1201new.rtf"
+local filename "result/report_1201old.rtf"
 local starlevel "* 0.10 ** 0.05 *** 0.01"
 local starnote "*** p<0.01, ** p<0.05, * p<0.1"
 
@@ -21,10 +21,11 @@ local it_tre q4_high_it_budget_median
 
 local fe county week
 
-local clevel county
+*local clevel county
 *local vce cluster `clevel'
 local vce rob
-local clusternote "Notes: Robust standard errors are clustered at the `clevel' level in parentheses." 
+*local clusternote "Notes: Robust standard errors are clustered at the `clevel' level in parentheses." 
+local clusternote "Notes: Robust standard errors are reported in parentheses." 
 local countynum N_clust
 
 
@@ -41,7 +42,7 @@ global additional 0  /* 0 = no additional analyses; 1 = have additional analyses
 // esttab * using .\result\correlation.rtf, unstack not nostar noobs compress label replace
 // esttab * using .\result\correlation_with_significance_level.rtf, unstack not noobs compress label replace
 
-**# IT Budget
+**# BAIT
 
 est clear
 
@@ -60,7 +61,7 @@ estadd local thfixed "YES"
 esttab  _all using "`filename'", replace keep(tre 1.tre#1.`it_tre' 1.tre#c.ln_it_budget_median  `con')
 		order(tre 1.tre#1.`it_tre' 1.tre#c.ln_it_budget_median   `con')
 		interaction("*")
-		title("Main Effect")
+		title({\b Table 2. Main Effect})
 		mtitles("Fixed effects" "Fixed effects and control" "Continuous treatment")
 		label stat( r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g ) labels( R-squared Observations "No. Counties" "County & Week FE"))
@@ -101,7 +102,7 @@ estadd local con "YES"
 #delimit ;
 
 esttab  _all using "`filename'", a keep(treat* 1.treat*#1.`it_tre' `con')
-		title("Relative Time Model")
+		title({\b Table 3. Relative-time Model})
 		label stat( r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
@@ -112,10 +113,47 @@ esttab  _all using "`filename'", a keep(treat* 1.treat*#1.`it_tre' `con')
 	
 #delimit cr;
  est clear
+
+reghdfe initclaims_rate_regular treatb6backward treatb5-treatb1 treata1-treata5 treata6forward (treatb6backward treatb5-treatb1 treata1-treata5 treata6forward )##`it_tre' `con', absorb(`fe') vce(`vce')
  
-coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High BAIT on Unemployment Rates", size(median))  xlabel(, labsize(tiny))  coeflabels(1.treatb6backward#1.`it_tre'= "T-6" 1.treatb5#1.`it_tre'= "T-5" 1.treatb4#1.`it_tre'= "T-4"  1.treatb3#1.`it_tre'= "T-3" 1.treatb2#1.`it_tre'= "T-2" 1.treatb1#1.`it_tre'= "T-1" 1.treata0#1.`it_tre'= "T=0" 1.treata1#1.`it_tre'= "T+1" 1.treata2#1.`it_tre'= "T+2" 1.treata3#1.`it_tre'= "T+3" 1.treata4#1.`it_tre'= "T+4" 1.treata5#1.`it_tre'= "T+5" 1.treata6forward#1.`it_tre'= "T+6" ) nolabel yline(0, lpattern(dash)) xline(6.5, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red))
+// set scheme s1mono
+// coefplot, keep(1.treat*) vertical recast(connected) title("The Impact of High BAIT on Unemployment Rates", size(median))  xlabel(, labsize(tiny))  coeflabels(1.treatb6backward#1.`it_tre'= "T-6" 1.treatb5#1.`it_tre'= "T-5" 1.treatb4#1.`it_tre'= "T-4"  1.treatb3#1.`it_tre'= "T-3" 1.treatb2#1.`it_tre'= "T-2" 1.treatb1#1.`it_tre'= "T-1" 1.treata0#1.`it_tre'= "T=0" 1.treata1#1.`it_tre'= "T+1" 1.treata2#1.`it_tre'= "T+2" 1.treata3#1.`it_tre'= "T+3" 1.treata4#1.`it_tre'= "T+4" 1.treata5#1.`it_tre'= "T+5" 1.treata6forward#1.`it_tre'= "T+6" ) nolabel yline(0, lpattern(dash)) xline(6.5, lpattern(dash)) xlabel(, labsize(small)) text(1 -0.5 "hahah", fcolor(red))
+// graph export "C:\Users\Leting\Documents\2.Covid_IT_Employment\3.Report\relative_time.emf", as(emf) name("Graph")
 
  
+
+**# CEM
+
+
+eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weight_relax !=0 , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+
+eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weight_strict !=0 , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+
+eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weights_10bins !=0 , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+
+eststo: reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weight_auto !=0 , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+** Use the default binning algorithm,  "sturges" for Sturge's rule
+
+#delimit ;
+
+esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre' )
+		title({\b Table 4. Coarsened Exact Matching Analyses})
+		label stat(r2 N `countynum' thfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
+		 b(3) nogap onecell 
+		 	interaction("*")
+		mtitles("CEM 1" "CEM 2" "CEM 3" "CEM 4")
+		nonotes addnote("`clusternote'" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+est clear
+
+
 **# Alternative measurements
 // 
 //  local starlevel "* 0.10 ** 0.05 *** 0.01"
@@ -144,7 +182,7 @@ estadd local thfixed "YES"
 
 esttab  _all using "`filename'", a keep(tre 1.tre#1.q4_high_its_emps_all 1.tre#c.ln_its_emps  `con')
 		order(tre 1.tre#1.q4_high_its_emps_all 1.tre#c.ln_its_emps  `con')
-		title(Alternative Measurement - IT Service Employees)
+		title({\b Table 5. Alternative Measurement - IT Service Employees})
 		interaction("*")
 		mtitles("Fixed effects" "Fixed effects and control" "Continuous treatment")
 		label stat( r2 N `countynum' thfixed,
@@ -156,32 +194,21 @@ esttab  _all using "`filename'", a keep(tre 1.tre#1.q4_high_its_emps_all 1.tre#c
 #delimit cr;
 est clear
 
-**# CEM
+**# Philly Case
 
 
-eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weight_relax !=0 , absorb(`fe') vce(`vce')
-estadd local thfixed "YES"
+frame copy default phi
+frame change phi
+frame pwf
+codebook cem_strata_strict cem_strata_relax if county == 42101
 
-eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weight_strict !=0 , absorb(`fe') vce(`vce')
-estadd local thfixed "YES"
+keep if county == 42101 | county == 36005
 
-eststo:reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if cem_weights_10bins !=0 , absorb(`fe') vce(`vce')
-estadd local thfixed "YES"
+twoway  (line initclaims_rate_regular week if county == 42101,  color(blue) ) (line initclaims_rate_regular week if county == 36005, color(red)) , legend(on order(1 "Philadelphia (PA)" 2 "Bronx (NY)" ))
 
-#delimit ;
+graph export "C:\Users\Leting\Documents\2.Covid_IT_Employment\3.Report\phillycase.emf", as(emf) name("Graph")
+* San fan county  =  6075
 
-esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre' )
-		title(CEM )
-		label stat(r2 N `countynum' thfixed,
-		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
-		 b(3) nogap onecell 
-		 	interaction("*")
-		mtitles("CEM 1" "CEM 2" "CEM 3")
-		nonotes addnote("`clusternote'" "`starnote'")
-		starlevels( `starlevel') se ;
-	
-#delimit cr;
-est clear
  
 **# Robustness Checks Telework & Com  (robustness)
 
@@ -201,7 +228,7 @@ estadd local thfixed "YES"
 #delimit ;
 
 esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre' 1.tre#*1.q4_high_its_emps_all  1.tre#*c.teleworkable_emp 1.tre#c.ln_its_emps 1.tre#c.ln_com_emp )
-		title(Robustness - Telework and IT Equipment Employees )
+		title({\b Robustness - Telework Index and IT Equipment Employees})
 		label stat(r2 N `countynum' thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
@@ -365,92 +392,93 @@ foreach m of local itgroup {
 	 
  
  
-local vce rob
-if $newITgroup == 1 {
-		
-local it_group "appdev_peremp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median"
-
-foreach m of local it_group{
-	eststo: reghdfe initclaims_rate_regular tre tre##`it_tre'##c.`m' `con', absorb(`fe') vce(`vce')
-	estadd local thfixed "YES"
-	}
-	
-	
-#delimit ;
-
-esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.appdev_peremp_median
-										    1.tre#*1.`it_tre'#c.enterp_peremp_median
-											1.tre#*1.`it_tre'#c.cloud_peremp_median
-
-											1.tre#*1.`it_tre'#c.productivity_peremp_median
-											1.tre#*1.`it_tre'#c.marketing_peremp_median
-											1.tre#*1.`it_tre'#c.collab_peremp_median
-											
-											1.tre#*1.`it_tre'#c.security_peremp_median
-											1.tre#*1.`it_tre'#c.infra_peremp_median
-											
-											
-											
-											1.tre#c.appdev_peremp_median
-											1.tre#c.enterp_peremp_median
-											1.tre#c.cloud_peremp_median
-											
-											1.tre#c.productivity_peremp_median
-											1.tre#c.marketing_peremp_median													
-											1.tre#c.collab_peremp_median
-											
-											1.tre#c.security_peremp_median
-											1.tre#c.infra_peremp_median
-								
-											
-											
-										    1.tre#1.`it_tre' 
-											
-										       `con' )
-		title(1. )
-			order(tre  						1.tre#*1.`it_tre'#c.appdev_peremp_median
-										    1.tre#*1.`it_tre'#c.enterp_peremp_median
-											1.tre#*1.`it_tre'#c.cloud_peremp_median
-
-											1.tre#*1.`it_tre'#c.productivity_peremp_median
-											1.tre#*1.`it_tre'#c.marketing_peremp_median
-											1.tre#*1.`it_tre'#c.collab_peremp_median
-											
-											1.tre#*1.`it_tre'#c.security_peremp_median
-											1.tre#*1.`it_tre'#c.infra_peremp_median
-											
-											
-											
-											1.tre#c.appdev_peremp_median
-											1.tre#c.enterp_peremp_median
-											1.tre#c.cloud_peremp_median
-											
-											1.tre#c.productivity_peremp_median
-											1.tre#c.marketing_peremp_median													
-											1.tre#c.collab_peremp_median
-											
-											1.tre#c.security_peremp_median
-											1.tre#c.infra_peremp_median
-								
-											
-											
-										    1.tre#1.`it_tre' 
-											
-										       `con'	)		
-		label stat( r2 N df_a thfixed,
-		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week & County FE"))
-		 b(3) nogap onecell 
-		nonotes addnote("`clusternote'" "`starnote'")
-		starlevels( `starlevel') se ;
-	
-#delimit cr;
-
-est clear
-}
- 
+// local vce rob
+// if $newITgroup == 1 {
+//		
+// local it_group "appdev_peremp_median enterp_peremp_median cloud_peremp_median productivity_peremp_median marketing_peremp_median collab_peremp_median security_peremp_median infra_peremp_median"
+//
+// foreach m of local it_group{
+// 	eststo: reghdfe initclaims_rate_regular tre tre##`it_tre'##c.`m' `con', absorb(`fe') vce(`vce')
+// 	estadd local thfixed "YES"
+// 	}
+//	
+//	
+// #delimit ;
+//
+// esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.appdev_peremp_median
+// 										    1.tre#*1.`it_tre'#c.enterp_peremp_median
+// 											1.tre#*1.`it_tre'#c.cloud_peremp_median
+//
+// 											1.tre#*1.`it_tre'#c.productivity_peremp_median
+// 											1.tre#*1.`it_tre'#c.marketing_peremp_median
+// 											1.tre#*1.`it_tre'#c.collab_peremp_median
+//											
+// 											1.tre#*1.`it_tre'#c.security_peremp_median
+// 											1.tre#*1.`it_tre'#c.infra_peremp_median
+//											
+//											
+//											
+// 											1.tre#c.appdev_peremp_median
+// 											1.tre#c.enterp_peremp_median
+// 											1.tre#c.cloud_peremp_median
+//											
+// 											1.tre#c.productivity_peremp_median
+// 											1.tre#c.marketing_peremp_median													
+// 											1.tre#c.collab_peremp_median
+//											
+// 											1.tre#c.security_peremp_median
+// 											1.tre#c.infra_peremp_median
+//								
+//											
+//											
+// 										    1.tre#1.`it_tre' 
+//											
+// 										       `con' )
+// 		title(1. )
+// 			order(tre  						1.tre#*1.`it_tre'#c.appdev_peremp_median
+// 										    1.tre#*1.`it_tre'#c.enterp_peremp_median
+// 											1.tre#*1.`it_tre'#c.cloud_peremp_median
+//
+// 											1.tre#*1.`it_tre'#c.productivity_peremp_median
+// 											1.tre#*1.`it_tre'#c.marketing_peremp_median
+// 											1.tre#*1.`it_tre'#c.collab_peremp_median
+//											
+// 											1.tre#*1.`it_tre'#c.security_peremp_median
+// 											1.tre#*1.`it_tre'#c.infra_peremp_median
+//											
+//											
+//											
+// 											1.tre#c.appdev_peremp_median
+// 											1.tre#c.enterp_peremp_median
+// 											1.tre#c.cloud_peremp_median
+//											
+// 											1.tre#c.productivity_peremp_median
+// 											1.tre#c.marketing_peremp_median													
+// 											1.tre#c.collab_peremp_median
+//											
+// 											1.tre#c.security_peremp_median
+// 											1.tre#c.infra_peremp_median
+//								
+//											
+//											
+// 										    1.tre#1.`it_tre' 
+//											
+// 										       `con'	)		
+// 		label stat( r2 N df_a thfixed,
+// 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week & County FE"))
+// 		 b(3) nogap onecell 
+// 		nonotes addnote("`clusternote'" "`starnote'")
+// 		starlevels( `starlevel') se ;
+//	
+// #delimit cr;
+//
+// est clear
+// }
+// 
 
 * Total number
 
+/*
 
 local vce cluster `clevel'
 
@@ -540,6 +568,7 @@ est clear
 
 
  
+*/
 
 
 **# Heterogneity 2: skill-level
@@ -582,7 +611,6 @@ est clear
  
 est clear
 
-local vce cluster `clevel'
  
 eststo:reghdfe initclaims_rate_regular tre tre##`it_tre'##c.agriculture `con' , absorb(`fe') vce(`vce')
 estadd local thfixed "YES"

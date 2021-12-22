@@ -161,6 +161,13 @@ g cem_weight_relax = cem_weights
 
 
 
+cem population medianhouseholdincome internetper totalhousehold emple_median information ,tre( q4_high_it_budget_median )
+
+g cem_strata_auto = cem_strata
+g cem_weight_auto = cem_weights
+
+
+
 cem population(#10) medianhouseholdincome(#10) internetper(#10) totalhousehold(#10) emple_median(#10) reven_median(#10) agriculture(#5) construction(#5) manufacturing(#5) wholesale(#5) retail(#5) transportation(#5) information(#5) insurance(#5) ,tre( q4_high_it_budget_median )
 
 frame change default
@@ -183,13 +190,11 @@ frame change phi
 frame pwf
 codebook cem_strata_strict cem_strata_relax if county == 42101
 
-keep if cem_strata_strict == 117 | cem_strata_relax == 27
+keep if county == 42101 | county == 36005
 
+twoway  (line initclaims_rate_regular week if county == 42101,  color(blue) ) (line initclaims_rate_regular week if county == 36005, color(red)) , legend(on order(1 "Philadelphia (PA)" 2 "Bronx (NY)" ))
 
-twoway  (line initclaims_rate_regular week if county == 42101) (line initclaims_rate_regular week if county == 36005) , legend(on order(1 "Philly" 2 "Bronx" ))
-
-
-
+graph export "C:\Users\Leting\Documents\2.Covid_IT_Employment\3.Report\phillycase.emf", as(emf) name("Graph")
 * San fan county  =  6075
 keep if cem_strata_strict == 112 | cem_strata_relax == 81
 
@@ -200,19 +205,16 @@ keep if cem_strata_strict == 112 | cem_strata_relax == 81
 
 labvars tre q4_high_it_budget_median q4_high_its_emps_all "After Stay at Home" "HighBAIT" "HighBAIT (IT Service Employees)"
 
+labvars ln_it_budget_median ln_its_emps "BAIT" "Alternative BAIT (IT Service Employees)"
 
-label variable ln_it_budget_median "BAIT"
+label var teleworkable_emp ln_com_emp  "Telework index" "IT equipment employees"
 
-label variable ln_its_emps "Alternative BAIT (IT Service Employees)"
+labvars internetper ln_income "Internet Coverage"  "Household Income"
 
 
-label variable internetper "Internet Coverage"
 
-label variable ln_income "Household Income"
 
-label var teleworkable_emp  "Telework index"
 
-label var ln_com_emp "IT equipment employees"
 
 
 // local var 'initclaims_count_regular initclaims_rate_regular emp_combined avg_new_death_rate avg_new_case_rate avg_home_prop '
