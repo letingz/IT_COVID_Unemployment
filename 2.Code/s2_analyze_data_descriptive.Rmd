@@ -5,14 +5,15 @@ date: "5/1/2021"
 output: html_document
 ---
 
-```{r Description}
+# DESCRIPTION
+
+```{r des}
 # Descriptive analyses
 # Sample & Correlation visualization
-
 install.packages("gtsummary")
 ```
 
-
+# LOAD LIBRARY
 
 ```{r Load library}
 library(ggplot2)
@@ -34,105 +35,10 @@ library(labelled)
 ```
 
 
-
 ```{r Load data}
 load("~/2. Covi_IT_Unemploy/0603weekly.RData")
 ```
-# Summarize ci database
 
-```{r read the data}
-ci_path <- "C:/Users/Leting/Documents/CI_Investment/1.Data/1.raw_data/USA_2019"
-
-# read CI site description data
-
-path <- paste(ci_path, '/SiteDescription.TXT', sep = '')
-col <-  c('SITEID', 'EMPLE','REVEN','SICGRP', 'SICSUBGROUP')
-ci_site <- fread(path, select = col)
-
-
-psych::describe(ci_site[, c('EMPLE', 'REVEN')])
-
-ci_site <- ci_site %>% 
-  mutate(size_group = case_when(
-      between(EMPLE, 0, 50) ~ "0 to 50",
-      between(EMPLE, 50, 100) ~ "50 to 100",
-      between(EMPLE, 100, 500) ~ "100 to 500",
-      between(EMPLE, 500, 1000) ~ "500 to 1000",
-      EMPLE> 1000 ~ ">1000"
-      
-  ),
-       rev_group = case_when(
-         between(REVEN, 0, 5) ~ "0 to 5",
-         between(REVEN, 5, 10 ) ~ "5 to 10",
-         between(REVEN, 10, 50 ) ~ "10 to 50",
-         between(REVEN, 50, 100 ) ~ "50 to 100",
-         REVEN>100 ~ "> 100"))
-
-```
-
-
-```{r CI Summary statistics: Revenue, Size}
-library(ggpubr)
-
-
-positions <- c("0 to 50", "50 to 100", "100 to 500", "500 to 1000", ">1000")
-
-ci_site %>% 
-  group_by(size_group) %>% 
-  summarise(counts = n()) %>% 
-  arrange(desc(counts)) %>% 
-  ggplot(aes(x = size_group, y = counts)) +
-  scale_x_discrete(limits = positions) +
-  geom_bar(stat = "identity")  + 
-  theme_pubclean()
-
-
-positions <- c("0 to 5", "5 to 10", "10 to 50", "50 to 100", ">100")
-
-ci_site %>% 
-  group_by(rev_group) %>% 
-  summarise(counts = n()) %>% 
-  arrange(desc(counts)) %>% 
-  ggplot(aes(x = rev_group, y = counts)) +
-  scale_x_discrete(limits = positions) +
-  geom_bar(stat = "identity")  + 
-  theme_pubclean()
-
-```
-```{r CI Summary statistics : Industries}
-
-ci_site %>% 
-  group_by(SICGRP) %>% 
-  summarise(counts = n()) %>% 
-  arrange(desc(counts)) %>% 
-  ggplot(aes(x = SICGRP, y = counts)) +
- # scale_x_discrete(limits = positions) +
-  geom_bar(stat = "identity")  + 
-  coord_flip()+
-  theme_pubclean()
-
-
-ci_site %>% 
-  group_by(SICSUBGROUP) %>% 
-  summarise(counts = n()) %>% 
-  arrange(desc(counts)) %>% 
-  ggplot(aes(x = reorder(SICSUBGROUP, counts), y = counts )) +
- # scale_x_discrete(limits = positions) +
-  geom_bar(stat = "identity")  + 
-  coord_flip()+
-  theme_pubclean()
-
-
-```
-
-
-# Summarize county data- use plot missing 
-
-```{r Summarize main data and missing values}
-summary(county_week_panel)
-plot_missing(county_week_panel)
-plot_missing(county_month_panel)
-```
 
 
 # Create county-level statistics
@@ -232,7 +138,7 @@ county_pop_median <- county_pop_median %>%
 
 
 
-# Sample Descriptive Analysis
+# Sample vs Population CITIDB Descriptive Analysis
 
 ```{r Summary Statisitcs - IT budget & Industry, rows.print = 100}
 library(psych)
@@ -258,76 +164,7 @@ psych::describe(df, fast = TRUE)
 
 ```
 
-```{r Summary Statisitcs - Demographics & IT groups, rows.print = 100}
 
-df <- county_sample_acs
-psych::describe(df, fast = TRUE)
-
-
-df <- county_sample_ci[, -c(1)]
-psych::describe(df)
-```
-
-
-
-```{r Combine above results and Create a nice table, rows.print = 100}
-demo <-county_sample_median_stat %>%
-      left_join(county_sample_acs) %>% 
-  left_join(county_sample_ci %>% select(!contains("Budget"))) %>% 
-      select(-c("count_total_est", "NON-CL", "meanincome")) %>% 
-      relocate(its_emps_all, .before = "AG-M-C") %>% 
-  `colnames<-`(c("County", "No. Establishment", "Employee", "Revenue", "IT Budget", "Hardware Budget",
-                 "Software Budget", "IT Service Budget", "IT Service Employees",
-                 "Agriculture", "Education", "Finance", "Government", "Manufracturing", "Medical", 
-                 "Service", "Transportation", "Wholsale", "Total Household", "Population", "Internet",
-                 "Household Income", "Dev", "Enter", "Cloud", "Database", "WFH","Marketing", "Security", "Network"))
-          
-
-psych::describe(demo, fast = TRUE)
-
-```
-
-
-```{r Sample vs Population - Mean, sd, p-value}
-sample_pop_diff <- county_pop_median %>% 
-  bind_rows(county_sample_median %>% rename("COUNTY" = "countyfips")) %>% 
-  group_by(COUNTY) %>% 
-  mutate(county_appear_time = n()) %>% 
-  arrange(COUNTY) %>% 
-  mutate(not_in_sample = ifelse(county_appear_time == 2, 0, 1)) %>% 
-  distinct() %>% 
-  ungroup()
-
-# Copy the table directly is better than export
-datasummary((`No. Establishments`= count)+
-            (`Employment`= EMPLE_median  )+
-            (`Revenue`= REVEN_median   )+
-            (`IT Budget`=IT_BUDGET_median)+
-            (`Hardware Budget`= HARDWARE_BUDGET_median) +
-            (`Software Budget` = SOFTWARE_BUDGET_median) +
-            (`Service Budget` = SERVICES_BUDGET_median) +
-            (`IT Services Employees` = its_emps_all ) +
-            (`Agriculture, Mining, and Construction` = `AG-M-C` ) +
-            (`Education` = EDUC) +
-            (`Finance, Insurance, and Real Estate` = `F-I-RE`) +
-            (`Government` = GOVT) +
-            (`Manufacturing` = MANUF ) +
-            (`Medicine` = MED ) +
-            (`Services` = SVCS) +
-            (`Transportation and Utilities` = `TR-UTL`) +
-            (`Wholesale and Retailing` = `WHL-RT` ) +
-            (`Population` = population)+
-            (`Internet Coverage` = internetper )+
-            (`Household Income` = medianhouseholdincome) ~
-            (`Sample`=Factor(not_in_sample))*
-              (Mean+SD),
-            sparse_header = FALSE,
-            data=filter(sample_pop_diff) )
-
- #   "Software Budget", "IT Service Budget", "IT Service Employees",
-
-
-```
 
 ```{r Sample vs not in sample - comparison }
 
@@ -435,73 +272,6 @@ ttest <- sample_pop_diff %>%
   
 ```
 
-# Employment data
-
-
-```{r}
-
-toDate <- function(year, month, day) {
-    ISOdate(year, month, day)
-}
-
-
-toNumerics <- function(Date) {
-    stopifnot(inherits(Date, c("Date", "POSIXt")))
-    day <- as.numeric(strftime(Date, format = "%d"))
-    month <- as.numeric(strftime(Date, format = "%m"))
-    year <- as.numeric(strftime(Date, format = "%Y"))
-    list(year = year, month = month, day = day)
-}
-
-posting_trend <- bg_city_job %>%
-                group_by(year, month) %>% 
-            summarise_at(3:17, mean, na.rm = TRUE) %>% 
-            mutate(date = toDate(year, month,"1")) 
-  
-  
-a <- posting_trend %>%
-   pivot_longer(-c(cityname, stateabbrev, year, month, date), names_to = "var", values_to = "value") 
-  #ggplot(aes(x = date, y = bg_posts_jz1))
-  
-  
-a %>% filter(grepl( "ss", var)) %>% 
-  ggplot(aes(x = date, y = value, color = var)) + geom_line()
-   
-  
-  
-
-
-```
-
-
-
-
-
-# Create correlation Matrix
-
-```{r Correlation matrix}
-library(corrplot)
-
-df <- demo %>% select(c(
-                 "Agriculture", "Education", "Finance", "Government", "Manufracturing", "Medical", 
-                 "Service", "Transportation", "Wholsale", "IT Budget", "Hardware Budget",
-                 "Software Budget", "IT Service Budget", "IT Service Employees"))
-
-corrplot(cor(df, method = c("spearman"), use="complete.obs"))
-
-
-df <- demo %>% select(c(
-                 "Agriculture", "Education", "Finance", "Government", "Manufracturing", "Medical", 
-                 "Service", "Transportation", "Wholsale",  "Dev", "Enter", "Cloud", "Database", "WFH","Marketing", "Security", "Network"))
-
-corrplot(cor(df, method = c("spearman"), use="complete.obs"))
-```
-
-```{r}
-save(county_pop_basic, county_pop_industry, demo, county_sample_stat,
-     file = here(out_data_path, "var_correlation.rds") )
-
-```
 
 ```{r}
 library(Hmisc)

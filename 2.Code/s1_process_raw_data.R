@@ -6,7 +6,26 @@
 # output: R data
 
 
-####### DESCRIPTION ########
+# OVERVIEW ----------------------------------------------------------
+# The script aims to:
+#  - Import data
+#  - Merge data 
+#  - Create a panel dataset 
+# Input: 
+#  -  Unemployment data, stay-at-home policy from Economic Indicators
+#  -  Covid-19 claim and death rates from Economic Indicators
+#  -  IT Workforce from Quarterly Workforce Indicators
+#  -  BAIT from CI Database (pre-processed in another R script)
+#  -  Geographic crosswalk file
+#  -  County basics from American Community Survey (ACS)
+#  -  County occupation data from Occupational Employment and Wage Statistics (OEWS)
+#  -  Stay at home index from COVIDcast
+#  -  Telework index data from DingelNeiman
+# Output:
+#  -  Panel dataset 
+
+
+
 
 ####### LOAD LIBRARY ########
 
@@ -353,18 +372,7 @@ oews_use <- oews_use %>%
 
 write_dta(oews_use, here("Stata", "oews_use.dta"))
 
-####### Import CPS data from IPUMS #######
 
-#source: ipums
-library(ipumsr)
-# Change these filepaths to the filepaths of your downloaded extract
-
-cps_ddi <- read_ipums_ddi(here(raw_data_path,"cps_00003.xml")) # Contains metadata, nice to have as separate object
-cps_data <- read_ipums_micro(cps_ddi, data_file = here(raw_data_path, "cps_00003.dat" ))
-
-cps_use <- cps_data %>% filter(YEAR == 2020  & COUNTY !=0)
-
-rm(cps_data)
 ####### Import COVIDcast data from API  #######
 #source: https://cmu-delphi.github.io/delphi-epidata/api/covidcast-signals/safegraph.html
 #devtools::install_github("cmu-delphi/covidcast", ref = "main",
@@ -570,10 +578,9 @@ county_week_panel_use <-  county_week_panel %>% select(-c(year.x, year.y))
 county_week_panel_use <-  county_week_panel %>% left_join(oews_use, by = c("countyfips" = "FIPS.County.Code"))
 
 #write.csv(county_week_panel, here(out_data_path, "county_week_panel_aug.csv"))
+#write_dta(county_week_panel_use, here("Stata", "county_week_panel_dec_streamed.dta"))
 
-write_dta(county_week_panel_use, here("Stata", "county_week_panel_dec_streamed.dta"))
+write_dta(county_week_panel_use, here(out_data_path, "county_week_panel_dec_streamed.dta"))
 
-
-
-county_week_panel <- read_dta(here("Stata", "county_week_panel_dec_streamed.dta"))
+#county_week_panel <- read_dta(here("Stata", "county_week_panel_dec_streamed.dta"))
 
