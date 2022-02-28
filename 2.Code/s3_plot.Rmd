@@ -12,9 +12,9 @@ library(tidyverse)
 library(here)
 library(data.table)
 library(haven)
-library("maps")
-library("ggplot2")
-
+library(maps)
+library(ggplot2)
+library(robustHD)
 ```
 
 # Config
@@ -316,17 +316,17 @@ mid_data %>%
 # Density with segments (4th quantile)
 
  county_it_unique<- county_week_use %>% 
-  select(county, it_budget_median) %>% 
+  select(county, it_median) %>% 
   distinct()
 
 
- q4 <-  quantile(county_it_unique$it_budget_median)[4]
+ q4 <-  quantile(county_it_unique$it_median)[4]
 
 
 county_week_use %>% 
-  select(county, it_budget_median) %>% 
+  select(county, it_median) %>% 
   distinct() %>% 
-  ggplot(aes(x = it_budget_median)) +
+  ggplot(aes(x = it_median)) +
   geom_density() + 
   geom_vline(xintercept = q4, linetype="dashed", color = "blue") +
   annotate('text', x = q4+25000, y = 0.00007, label = "> High BAIT", color = "blue", size = 5)+
