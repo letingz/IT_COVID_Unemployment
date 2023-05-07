@@ -23,7 +23,8 @@ local clusternote "Notes: Robust standard errors are reported in parentheses."
 local df "e(df_a_initial)"
 
 local it_group "app_per_median enterp_per_median cloud_per_median groupware_per_median security_per_median network_per_median"
-
+local industry_group "agriculture construction manufacturing wholesale retail transportation information insurance"
+local occupation_group "lowskilloc midskilloc highskilloc"
 
 global newITgroup 1  /* 0 = old IT groups; 1 = new IT groups*/
 global graph 0 /* 0 = No graphs; 1 = Export graphs*/
@@ -66,7 +67,7 @@ global onlyhetero 1
 
 **# Description analyses
 
-* asdoc sum initclaims_rate_regular tre q4_high_it_median ln_it_median `it_group' `con' teleworkable_emp ln_com_emp, stat(mean sd min max) label dec(2) tzok save(result/desc.doc)
+asdoc sum initclaims_rate_regular tre q4_high_it_median ln_it_median `it_group' `industry_group' `occupation_group'  `con' teleworkable_emp ln_com_emp, stat(mean sd min max) label dec(2) tzok save(result/desc.doc)
 
 **# Correlation Matrx
 
@@ -97,8 +98,6 @@ local nogroup = e(dof_table)[1,1]
 estadd local countynum `nogroup'
 
 #delimit ;
-
-
 
 
 
@@ -688,28 +687,8 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.lowskilloc 1.tre
 est clear
  
 	
-	
-// local occ_group "job_edu_lib job_art_sport job_health job_health_sup job_protect job_food_ser job_buil_clean job_percare_ser"
-//
-// foreach m of local occ_group{
-// 	reghdfe initclaims_rate_regular tre tre##`it_tre'##c.`m' `con', absorb(`fe') vce(`vce')
-//
-// 	}
-//	
-//	
-// local occ_group "job_sale job_off_admin job_farm_fish job_construct job_inst_mainte job_prodct job_trans"
-//
-// foreach m of local occ_group{
-// 	reghdfe initclaims_rate_regular tre tre##`it_tre'##c.`m' `con', absorb(`fe') vce(`vce')
-//
-// 	}
-//	
 
-*} 
-
-
-
- 
+**# Additional Analyses: Philly & Graphs
 
 if $additional == 1{
 	
@@ -729,7 +708,16 @@ twoway  (line initclaims_rate_regular week if county == 42101,  color(blue) ) (l
 graph export "C:\Users\Leting\Documents\2.Covid_IT_Employment\3.Report\phillycase.emf", as(emf) name("Graph") replace
 * San fan county  =  6075	
 
+
+
+// **# Graphs
+
+ graph hbox app_per_median-network_per_median, nooutsides
+
 	}
+
+	
+	
 
 *# Achive analyses
 
@@ -914,9 +902,7 @@ graph export "C:\Users\Leting\Documents\2.Covid_IT_Employment\3.Report\phillycas
 // }
 //
 //
-// **# Graphs
-//
-// graph hbox app_per_median-network_per_median, nooutsides
+
 //
 //
 // **# Archive

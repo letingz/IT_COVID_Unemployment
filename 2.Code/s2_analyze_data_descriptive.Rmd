@@ -123,9 +123,13 @@ county_sample_median <- county_sample_basic %>%
 # Add ACS data
 
 county_acs <- read.csv(here("1.Data", "2.intermediate_data", "county_demo.csv"))
+
+county_acs_new <- read.csv(here("1.Data", "2.intermediate_data", "county_demo.csv"))
+county_acs_edu <- 
+
 county_sample_acs <- county_sample %>% 
-              left_join(county_acs %>% 
                        select(-X))
+              left_join(county_acs %>% 
 
 county_sample_median <- county_sample_median %>% 
   left_join(county_acs %>% select(-X))
@@ -134,7 +138,7 @@ county_pop_median <- county_pop_median %>%
   left_join(county_acs %>% rename("COUNTY" = "countyfips")%>%  select(-X))
 
 
-```
+```=
 
 
 
@@ -166,7 +170,7 @@ psych::describe(df, fast = TRUE)
 
 
 
-```{r Sample vs not in sample - comparison }
+```{r DEMO Sample vs not in sample - comparison }
 
 #install.packages("rstatix")
 

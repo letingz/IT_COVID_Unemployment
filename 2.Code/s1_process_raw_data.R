@@ -38,8 +38,8 @@ library(robustHD)
 library(haven)
 
 raw_data_path <- here("1.Data","1.raw_data")
+int_data_path <- here("1.Data", "2.intermediate_data")
 out_data_path <- here("1.Data","3.output_data")
-
 
 ####### LOG  #######
 
@@ -237,10 +237,11 @@ zip_county_use <- zip_county %>%  # if a ZIP code belongs to two COUNTY, chose t
   filter(RES_RATIO == max_ratio) %>% select(c(ZIP, COUNTY)) %>% 
   as.data.frame()
 
-
+write_rds(zip_county_use, here(out_data_path, "zip_county_use.rds"))
 #source: https://data.nber.org/cbsa-msa-fips-ssa-county-crosswalk/2019/
 msa_county <- read.csv(here(raw_data_path, "COUNTY_METRO2019.CSV"))
 
+write.csv(zip_county_use, here(out_data_path, "zip_county_use.csv"))
 # EconomicTrack
 geoid <- read.csv(here(raw_data_path, "GeoIDs - County.csv"), stringsAsFactors = F)
 
@@ -473,7 +474,11 @@ ci_data_use <- ci_data_key %>% select(-ZIPCODE) %>%
 
 # Create no winsorzied measurements
 ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
-                                            IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+                                            IT_BUDGET, HARDWARE_BUDGET,PC_BUDGET,
+                                            SERVER_BUDGET, TERMINAL_BUDGET, PRINTER_BUDGET,
+                                            OTHER_HARDWARE_BUDGET, STORAGE_BUDGET,COMM_BUDGET,
+                                            SOFTWARE_BUDGET, SERVICES_BUDGET
+                                            ) %>% 
   filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
   group_by(COUNTY) %>% 
   summarise(count = n(), 
@@ -486,8 +491,11 @@ ci_summarise_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
 # mutate(across(ends_with("sum"), .fns = list( per_site = ~./count), .names = "{col}_{fn}",na.rm = TRUE)
 
 
-ci_data_per_emp <- ci_data_use %>% select(SITEID, COUNTY, EMPLE, REVEN, IT_BUDGET, HARDWARE_BUDGET, 
-                                          SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+ci_data_per_emp <- ci_data_use %>% select(SITEID, COUNTY, EMPLE, REVEN,
+                                          IT_BUDGET, HARDWARE_BUDGET,PC_BUDGET,
+                                          SERVER_BUDGET, TERMINAL_BUDGET, PRINTER_BUDGET,
+                                          OTHER_HARDWARE_BUDGET, STORAGE_BUDGET,COMM_BUDGET,
+                                          SOFTWARE_BUDGET, SERVICES_BUDGET) %>% 
   filter(EMPLE != 0 &  IT_BUDGET !=0) %>%
   mutate(
     across(ends_with("BUDGET"), .fns = list( per_emp = ~./EMPLE), .names = "{col}_{fn}",na.rm = TRUE)) %>% 
@@ -508,15 +516,55 @@ ci_county_all <- ci_summarise_all %>%
   mutate_if(is.integer64, as.numeric) %>% 
   left_join(county_adopttech_19, by = c("COUNTY" = "county"))
 
+write_dta(ci_county_all, here(int_data_path, "new_ci_county_all2023April.dta"))
+
 # rename
 
-colnames(ci_county_all)[3:8] <- c("emple_median", "reven_median", "it_median", "hardw_median", 
-                                   "soft_median", "service_median")
+colnames(ci_county_all)[3:15] <- c("emple_median", "reven_median", "it_bmedian", "hw_bmedian", 
+                                  "pc_bmedian",  "sv_bmedian", "ter_bmedian", "pr_bmedian",
+                                  "ohw_bmedian", "sto_bmedian", "comm_bmedian",  "sw_median",
+                                  "ser_median")
 
-colnames(ci_county_all)[9:12] <- c("it_per_median", "hardw_per_median", 
-                                    "soft_per_median", "service_per_median")
+colnames(ci_county_all)[16:26] <- c( "it_pbmedian", "hw_pbmedian", "pc_pbmedian",  "sv_pbmedian",
+                                    "ter_pbmedian", "pr_pbmedian","ohw_pbmedian", "sto_pbmedian", 
+                                    "comm_pbmedian",  "sw_pbmedian", "ser_pbmedian")
 
 
+############# Revised 2023: Derive mean value of BAIT #######
+
+library(tidyverse)
+ci_summarise_mean_all <- ci_data_use  %>% select(SITEID, COUNTY, EMPLE, REVEN,
+                                            IT_BUDGET, HARDWARE_BUDGET, SOFTWARE_BUDGET,SERVICES_BUDGET) %>% 
+  filter(!is.na(COUNTY) & IT_BUDGET != 0 & EMPLE!=0) %>%
+  group_by(COUNTY) %>% 
+  summarise(count = n(), 
+            #across(EMPLE:number_app_Network, mean, na.rm = TRUE, .names = "{col}_mean"), # create mean -ABONDON
+            across(EMPLE:SERVICES_BUDGET, mean, na.rm = TRUE, .names = "{col}_mean"))%>% #create median  
+  ungroup()
+
+ci_summarise_mean_per_emp <-  ci_data_per_emp %>% 
+  group_by(COUNTY) %>% 
+  summarise(across(IT_BUDGET_per_emp: SERVICES_BUDGET_per_emp, mean, 
+                   na.rm = TRUE, .names = "{col}_mean")) %>%
+  ungroup() 
+
+ci_county_mean_all <- ci_summarise_mean_all %>%
+  full_join(ci_summarise_mean_per_emp) %>% 
+  mutate_if(is.integer64, as.numeric) 
+
+# rename
+
+colnames(ci_county_mean_all)[3:8] <- c("emple_mean", "reven_mean", "it_mean",
+                                       "hardw_mean", 
+                                        "soft_mean", "service_mean")
+
+colnames(ci_county_mean_all)[9:12] <- c("it_per_mean", "hardw_per_mean", 
+                                   "soft_per_mean", "service_per_mean")
+
+library(foreign)
+library(here)
+
+write.dta(ci_county_mean_all, here(out_data_path, "ci_county_mean_all.dta"))
 
 ############# Aggregate and contruct county, weekly data #######
 
