@@ -68,7 +68,7 @@ forvalues i = 1 / 10 {
 	local itlist `itlist' 1.tre#c.itbudget`i' itbudget
 	}
 
-
+coefplot (*), keep(1.tre#c.itbudget1 1.tre#c.itbudget2 1.tre#c.itbudget3 1.tre#c.itbudget4 1.tre#c.itbudget5 1.tre#c.itbudget6 1.tre#c.itbudget7 1.tre#c.itbudget8 1.tre#c.itbudget9 1.tre#c.itbudget10) coeflabels(1.tre#c.itbudget1 = "Hardware" 1.tre#c.itbudget2 = "PC" 1.tre#c.itbudget3 = "Server" 1.tre#c.itbudget4 = "Terminal" 1.tre#c.itbudget5 = "Printer" 1.tre#c.itbudget6 = "Other Hardware" 1.tre#c.itbudget7 = "Storage" 1.tre#c.itbudget8 = "Communication" 1.tre#c.itbudget9 = "Software" 1.tre#c.itbudget10 = "Service")
 
 	#delimit ;
 
@@ -271,3 +271,65 @@ esttab  _all using "`filename'", a keep(tre 1.tre#1.`it_tre'#1.democratic  1.tre
 	
 #delimit cr;
 est clear
+
+
+
+
+
+---------
+
+if $heter_industry == 1 {
+
+*rename (agriculture construction manufacturing wholesale retail transportation information insurance) industry_emp#, addnumber
+est clear
+
+forvalues i  = 1 / 5 {
+  
+  local it_lab: variable label itbudget`i'
+
+	forvalues j = 1 / 8 {
+	
+		eststo it`i'_ind`j': reghdfe initclaims_rate_regular tre tre##c.itbudget`i'##c.industry_emp`j' `con' , absorb(`fe') vce(`vce')
+		estadd local thfixed "YES"
+		local nogroup = e(dof_table)[1,1]
+		estadd local countynum `nogroup'
+		
+		
+		local threeinterlist `threeinterlist' 1.tre#c.itbudget`i'#c.industry_emp`j' "After Stay at Home * `it_lab' * Industry"
+		local interlist `interlist' 1.tre#c.industry_emp`j' "After Stay at Home * Industry"
+	
+	}
+}
+
+	
+	
+coefplot (it1*), bylabel(Hardware) || (it2*), bylabel(PC) || (it3*), bylabel(Server) || (it4*), bylabel(Terminal) || (it5*), bylabel(Printer) ||, keep( 1.tre#*c.itbudget*#c.industry_emp* ) xline(0) rename(1.tre#c.itbudget[1-9]#c.industry_emp1 = "Agriculture" 1.tre#c.itbudget[1-9]#c.industry_emp2 = "Construction"  1.tre#c.itbudget[1-9]#c.industry_emp3 = "Manufacture"  1.tre#c.itbudget[1-9]#c.industry_emp4 = "Wholesale"  1.tre#c.itbudget[1-9]#c.industry_emp5 = "Retail"  1.tre#c.itbudget[1-9]#c.industry_emp6 = "Transportation"  1.tre#c.itbudget[1-9]#c.industry_emp7 = "Service"  1.tre#c.itbudget[1-9]#c.industry_emp8 = "Insurance", regex )
+             
+est clear
+
+forvalues i  = 6 / 10 {
+  
+  local it_lab: variable label itbudget`i'
+
+	forvalues j = 1 / 8 {
+	
+		eststo it`i'_ind`j': reghdfe initclaims_rate_regular tre tre##c.itbudget`i'##c.industry_emp`j' `con' , absorb(`fe') vce(`vce')
+		estadd local thfixed "YES"
+		local nogroup = e(dof_table)[1,1]
+		estadd local countynum `nogroup'
+		
+		
+		local threeinterlist `threeinterlist' 1.tre#c.itbudget`i'#c.industry_emp`j' "After Stay at Home * `it_lab' * Industry"
+		local interlist `interlist' 1.tre#c.industry_emp`j' "After Stay at Home * Industry"
+	
+	}
+}
+
+	
+	
+coefplot (it6*), bylabel("Other Hardware") || (it7*), bylabel(Storage) || (it8*), bylabel(Communication) || (it9*), bylabel(Software) || (it10*), bylabel(Service)|| , keep( 1.tre#*c.itbudget*#c.industry_emp* ) xline(0) rename(1.tre#c.itbudget([1-9]|10)#c.industry_emp1 = "Agriculture" 1.tre#c.itbudget([1-9]|10)#c.industry_emp2 = "Construction"  1.tre#c.itbudget([1-9]|10)#c.industry_emp3 = "Manufacture"  1.tre#c.itbudget([1-9]|10)#c.industry_emp4 = "Wholesale"  1.tre#c.itbudget([1-9]|10)#c.industry_emp5 = "Retail"  1.tre#c.itbudget([1-9]|10)#c.industry_emp6 = "Transportation"  1.tre#c.itbudget([1-9]|10)#c.industry_emp7 = "Service"  1.tre#c.itbudget([1-9]|10)#c.industry_emp8 = "Insurance", regex )
+             
+est clear
+
+
+}

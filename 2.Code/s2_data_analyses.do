@@ -2,7 +2,7 @@
 ***********************
 ** Title: Covid & Employment & IT investment Output & Weekly
 ** Stage: S2- Analyses
-** Date: 202112
+** Date: 202205
 ** Author: Leting Zhang
 **
 ************************
@@ -371,9 +371,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.app_per_median
 									
 											
 											1.tre#*1.`it_tre'#c.security_per_median
-											1.tre#*1.`it_tre'#c.network_per_median
-											
-											
+											1.tre#*1.`it_tre'#c.network_per_median										
 											
 											1.tre#c.app_per_median
 											1.tre#c.enterp_per_median
@@ -383,8 +381,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.app_per_median
 									
 											1.tre#c.security_per_median
 											1.tre#c.network_per_median
-								
-											
+															
 											
 										    1.tre#1.`it_tre' 
 											
@@ -398,6 +395,14 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.app_per_median
 #delimit cr;
 
 est clear
+
+
+* use this new code
+coefplot (*), keep( 1.tre#*1.q4_high_it_median#c.app_per_median 1.tre#*1.q4_high_it_median#c.enterp_per_median 1.tre#*1.q4_high_it_median#c.cloud_per_median 1.tre#*1.q4_high_it_median#c.groupware_per_median 1.tre#*1.q4_high_it_median#c.security_per_median) xline(0) coeflabels (1.tre#*1.q4_high_it_median#c.app_per_median = "Apps" 1.tre#*1.q4_high_it_median#c.enterp_per_median = "Enterprise" 1.tre#*1.q4_high_it_median#c.cloud_per_median = "Cloud" 1.tre#*1.q4_high_it_median#c.groupware_per_median = "Groupware" 1.tre#*1.q4_high_it_median#c.security_per_median = "Security")
+
+
+				
+
  
 if $graph == 1 {
 	
@@ -453,7 +458,7 @@ if $graph == 1 {
 // est clear
 // 
  
-**# Heterogneity 3: industry composition 
+**# Heterogneity 2: industry composition 
  
  
 est clear
@@ -549,7 +554,7 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.agriculture 1.tr
 est clear
 
 
-**# Heterogneity 4: Occupations
+**# Heterogneity 3: Occupations of skill levels
 
 // if $occupation == 1 {
 //	
