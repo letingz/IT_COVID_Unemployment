@@ -333,3 +333,33 @@ est clear
 
 
 }
+
+
+
+forvalues i  = 1 / 10 {
+ 
+ 
+    local it_lab: variable label itbudget`i'
+
+
+	forvalues j = 1 / 3 {
+	
+		eststo it`i'_oc`j' :reghdfe initclaims_rate_regular tre tre##c.itbudget`i'##c.skill_oc`j' `con' , absorb(`fe') vce(`vce')
+		estadd local thfixed "YES"
+		local nogroup = e(dof_table)[1,1]
+		estadd local countynum `nogroup'
+		
+		
+		local threeinterlist `threeinterlist' 1.tre#c.itbudget`i'#c.skill_oc`j' "After Stay at Home * `it_lab' * Occupation"
+		local interlist `interlist' 1.tre#c.skill_oc`j' "After Stay at Home * Occupation"
+	
+	}
+}
+	
+	
+coefplot (it1_*), bylabel("Hardware") || (it2*), bylabel(Storage) || (it3*), bylabel(Communication) ||  (it4*), bylabel(Terminal) || (it5*), bylabel(Printer) ||  (it6*), bylabel("Other Hardware") || (it7*), bylabel(Storage) || (it8*), bylabel(Communication) || (it9*), bylabel(Software) || (it10*), bylabel(Service)|| , keep( 1.tre#*c.itbudget*#c.skill_oc* ) xline(0) rename(1.tre#c.itbudget([1-9]|10)#c.skill_oc1 = "Low Skill" 1.tre#c.itbudget([1-9]|10)#c.skill_oc2 = "Midlle skill"  1.tre#c.itbudget([1-9]|10)#c.skill_oc3 = "High skill", regex )	
+	
+	
+coefplot (it6*), bylabel("Other Hardware") || (it7*), bylabel(Storage) || (it8*), bylabel(Communication) || (it9*), bylabel(Software) || (it10*), bylabel(Service)|| , keep( 1.tre#*c.itbudget*#c.industry_emp* ) xline(0) rename(1.tre#c.itbudget([1-9]|10)#c.industry_emp1 = "Agriculture" 1.tre#c.itbudget([1-9]|10)#c.industry_emp2 = "Construction"  1.tre#c.itbudget([1-9]|10)#c.industry_emp3 = "Manufacture"  1.tre#c.itbudget([1-9]|10)#c.industry_emp4 = "Wholesale"  1.tre#c.itbudget([1-9]|10)#c.industry_emp5 = "Retail"  1.tre#c.itbudget([1-9]|10)#c.industry_emp6 = "Transportation"  1.tre#c.itbudget([1-9]|10)#c.industry_emp7 = "Service"  1.tre#c.itbudget([1-9]|10)#c.industry_emp8 = "Insurance", regex )
+             
+est clear
