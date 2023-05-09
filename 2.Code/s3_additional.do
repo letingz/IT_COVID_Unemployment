@@ -249,19 +249,69 @@ est clear
 
 
 
-local filename "result/subgroup_partisanship.rtf"
+
+
 
 	**# Heterogneity 5: Partisanship
+	
+	
+	//local threeinterlist `threeinterlist' 1.tre#c.itbudget`i'#c.industry_emp`j' "After Stay at Home * `it_lab' * Industry"
+	
+*---------- analyses
+	
+frame create county_partisan
+frame change county_partisan
+use "C:\Users\Leting\Documents\2.Covid_IT_Employment\1.Data\3.output_data\county_house_partisan_2018.dta"
+local pquan  d_vshare r_vshare 
+foreach i of local pquan {
+xtile `i'_qtl = `i', nq(4)
+g q4_high_`i' = (`i'_qtl == 4)
+g q2_high_`i' = (`i'_qtl > 2)
+}
 
-eststo: reghdfe initclaims_rate_regular tre tre##`it_tre'##democratic `con', absorb(`fe') vce(`vce')
+g democ_com_id = 1 ==  ( d_vshare > r_vshare )
+
+
+frame change county_partisan
+destring county_fips, g(county)
+destring county_fips, g(county) force
+drop county_fips
+frame change default
+drop link
+frlink m:1 county, frame(county_partisan) generate(link)
+frget q4_high_d_vshare  = q4_high_d_vshare, from(link)
+frget  q2_high_d_vshare  =  q2_high_d_vshare, from(link) 
+frget democ_com_id  =  democ_com_id, from(link)
+*----------
+	
+est clear
+local filename "result/it_partisanship1.rtf"
+local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_tre q4_high_it_median
+local fe county week
+local vce rob
+local clusternote "Notes: Robust standard errors are reported in parentheses." 
+*local countynum N_clust
+local df "e(df_a_initial)"
+
+eststo: reghdfe initclaims_rate_regular tre 1.tre##`it_tre'##c.q4_high_d_vshare `con', absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+eststo: reghdfe initclaims_rate_regular tre 1.tre##`it_tre'##1.democ_com_id `con', absorb(`fe') vce(`vce')
 estadd local thfixed "YES"
 local nogroup = e(dof_table)[1,1]
 estadd local countynum `nogroup'
 	
 #delimit ;
 
-esttab  _all using "`filename'", a keep(tre 1.tre#1.`it_tre'#1.democratic  1.tre#1.`it_tre' 1.tre#1.democratic `con')
-		order(tre 1.tre#1.`it_tre'#1.democratic  1.tre#1.`it_tre' 1.tre#1.democratic `con')
+esttab  _all using "`filename'", r rename( 1.tre#1.`it_tre'#c.q4_high_d_vshare 
+"After Stay at Home * High BAIT * Demoncratic"  1.tre#1.`it_tre'#1.democ_com_id "After Stay at Home * High BAIT * Demoncratic" 1.tre#c.q4_high_d_vshare "After Stay at Home * Demoncratic" 1.tre#1.democ_com_id "After Stay at Home * Demoncratic"  1.tre#1.`it_tre'  "After Stay at Home * High BAIT" ) 
+		keep(tre "After Stay at Home * High BAIT * Demoncratic" "After Stay at Home * Demoncratic" "After Stay at Home * High BAIT"  `con')
+		order(tre "After Stay at Home * High BAIT * Demoncratic" "After Stay at Home * Demoncratic" "After Stay at Home * High BAIT"    `con')
 		label stat(r2 N countynum thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
 		 b(3) nogap onecell 
@@ -270,8 +320,17 @@ esttab  _all using "`filename'", a keep(tre 1.tre#1.`it_tre'#1.democratic  1.tre
 		starlevels( `starlevel') se ;
 	
 #delimit cr;
-est clear
 
+"After Stay at Home * `it_lab' * Occupation"
+								"After Stay at Home * Occupation"
+									 1.tre#c.itbudget`i' `con'
+
+----------
+		local threeinterlist `threeinterlist' 1.tre#c.itbudget`i'#c.skill_oc`j' "After Stay at Home * `it_lab' * Occupation"
+		local interlist `interlist' 1.tre#c.skill_oc`j' "After Stay at Home * Occupation"
+
+ county q4_high_d_vshare q2_high_d_vshare democ_com_id
+ 
 
 
 
@@ -359,7 +418,6 @@ forvalues i  = 1 / 10 {
 	
 coefplot (it1_*), bylabel("Hardware") || (it2*), bylabel(Storage) || (it3*), bylabel(Communication) ||  (it4*), bylabel(Terminal) || (it5*), bylabel(Printer) ||  (it6*), bylabel("Other Hardware") || (it7*), bylabel(Storage) || (it8*), bylabel(Communication) || (it9*), bylabel(Software) || (it10*), bylabel(Service)|| , keep( 1.tre#*c.itbudget*#c.skill_oc* ) xline(0) rename(1.tre#c.itbudget([1-9]|10)#c.skill_oc1 = "Low Skill" 1.tre#c.itbudget([1-9]|10)#c.skill_oc2 = "Midlle skill"  1.tre#c.itbudget([1-9]|10)#c.skill_oc3 = "High skill", regex )	
 	
-	
-coefplot (it6*), bylabel("Other Hardware") || (it7*), bylabel(Storage) || (it8*), bylabel(Communication) || (it9*), bylabel(Software) || (it10*), bylabel(Service)|| , keep( 1.tre#*c.itbudget*#c.industry_emp* ) xline(0) rename(1.tre#c.itbudget([1-9]|10)#c.industry_emp1 = "Agriculture" 1.tre#c.itbudget([1-9]|10)#c.industry_emp2 = "Construction"  1.tre#c.itbudget([1-9]|10)#c.industry_emp3 = "Manufacture"  1.tre#c.itbudget([1-9]|10)#c.industry_emp4 = "Wholesale"  1.tre#c.itbudget([1-9]|10)#c.industry_emp5 = "Retail"  1.tre#c.itbudget([1-9]|10)#c.industry_emp6 = "Transportation"  1.tre#c.itbudget([1-9]|10)#c.industry_emp7 = "Service"  1.tre#c.itbudget([1-9]|10)#c.industry_emp8 = "Insurance", regex )
+
              
 est clear
