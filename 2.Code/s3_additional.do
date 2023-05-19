@@ -251,8 +251,7 @@ est clear
 
 
 
-
-	**# Heterogneity 5: Partisanship
+*# Heterogneity 5: Partisanship
 	
 	
 	//local threeinterlist `threeinterlist' 1.tre#c.itbudget`i'#c.industry_emp`j' "After Stay at Home * `it_lab' * Industry"
@@ -421,3 +420,116 @@ coefplot (it1_*), bylabel("Hardware") || (it2*), bylabel(Storage) || (it3*), byl
 
              
 est clear
+
+
+**# Six US regions
+* New england
+g geo_ne = (inlist(state, "CT", "ME", "MA", "NH", "RI", "VT"))
+*Mid-Atlantic region
+g geo_ma = (inlist(state, "DE", "MD", "NJ", "NY", "PA") )
+* South region
+g geo_sh = (inlist(state, "AL", "AR", "FL", "GA", "KY", "LA"))
+replace geo_sh = (inlist(state, "MS","NC", "SC", "TN", "VA", "WV")) if geo_sh == 0
+*Midwest
+g geo_mw = (inlist(state, "IL", "IN", "IA", "KS", "MI", "MN","MO"))
+replace geo_mw = (inlist(state,  "NE", "ND" ,"OH", "SD","WI" )) if geo_mw == 0
+*South West
+g geo_sw = (inlist(state, "AZ", "NM", "OK", "TX"))
+* American West
+g geo_aw = (inlist(state, "AK", "CO", "CA", "HI", "ID" ,"MT"))
+replace geo_aw = (inlist(state,  "NV", "OR", "UT", "WA", "WY" )) if geo_aw == 0
+
+
+
+
+local filename "result/report_region_analyses.rtf"
+
+local geo geo_ne geo_ma geo_sh geo_mw geo_sw geo_aw
+
+est clear
+
+ foreach g of local geo{
+* Analyses
+eststo analysis_`g' : reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if `g' == 1, absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+
+)
+
+#delimit;
+esttab  _all using "`filename'", a ckeep(tre 1.tre#1.`it_tre'    `con')
+		order(tre 1.tre#1.`it_tre' `con' )	
+		title(BAIT)
+		label stat(r2 N countynum thfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week & County FE"))
+		 b(3) nogap onecell 
+		  interaction("*")
+		mtitles("New England" "Mid-Atlantic" "South" "Midwest" "South West" "American West")
+		nonotes addnote("`clusternote'" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear
+
+
+
+
+
+
+forvalues i  = 1 / 10 {
+ 
+  est clear
+    local it_lab: variable label itbudget`i'
+
+
+	forvalues j = 1 / 3 {
+	
+		eststo:reghdfe initclaims_rate_regular tre tre##c.itbudget`i'##c.skill_oc`j' `con' , absorb(`fe') vce(`vce')
+		estadd local thfixed "YES"
+		local nogroup = e(dof_table)[1,1]
+		estadd local countynum `nogroup'
+		
+		
+		local threeinterlist `threeinterlist' 1.tre#c.itbudget`i'#c.skill_oc`j' "After Stay at Home * `it_lab' * Occupation"
+		local interlist `interlist' 1.tre#c.skill_oc`j' "After Stay at Home * Occupation"
+	
+	}
+	
+	#delimit ;
+
+esttab  _all using "`filename'", a rename(`threeinterlist' `interlist')
+								keep(tre "After Stay at Home * `it_lab' * Occupation"
+								"After Stay at Home * Occupation"
+									 1.tre#c.itbudget`i' `con' )
+								title("Heterogeneity Analyses of `it_lab':" Skill Level of Occupations )
+								order(tre "After Stay at Home * `it_lab' * Occupation"
+								"After Stay at Home * Occupation"
+									 1.tre#c.itbudget`i' `con')
+								
+		label stat( r2 N countynum thfixed,
+		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "County & Week FE"))
+		 b(3) nogap onecell 
+		 interaction("*")
+		 mtitles("Low-skill" "Middle-skill" "High-skill")
+		nonotes addnote("`clusternote'" "`starnote'")
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+
+est clear	
+	
+}
+
+	
+	
+**# Exclude counties at which many public firms loacte
+reghdfe initclaims_rate_regular tre  tre##`it_tre'  `con' if nopubfirm_qtl!=4 , absorb(`fe') vce(`vce')
+
+reghdfe initclaims_rate_regular tre  tre##`it_tre'  `con' if sum_qtl!=4 , absorb(`fe') vce(`vce')
+
+
+
+
