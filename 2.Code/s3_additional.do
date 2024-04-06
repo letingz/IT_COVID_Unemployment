@@ -24,7 +24,6 @@ global heter_industry 0
 global heter_occupation 0
 global clean 0
 
-**#
 
 // . label variable itbudget1 "Hardware Budget"
 //
@@ -454,9 +453,7 @@ eststo analysis_`g' : reghdfe initclaims_rate_regular tre tre##`it_tre' `con' if
 estadd local thfixed "YES"
 local nogroup = e(dof_table)[1,1]
 estadd local countynum `nogroup'
-
-
-)
+ }
 
 #delimit;
 esttab  _all using "`filename'", a ckeep(tre 1.tre#1.`it_tre'    `con')
@@ -526,9 +523,298 @@ est clear
 	
 	
 **# Exclude counties at which many public firms loacte
-reghdfe initclaims_rate_regular tre  tre##`it_tre'  `con' if nopubfirm_qtl!=4 , absorb(`fe') vce(`vce')
 
-reghdfe initclaims_rate_regular tre  tre##`it_tre'  `con' if sum_qtl!=4 , absorb(`fe') vce(`vce')
+
+local filename "result/exclude_public_firms20230616.rtf"
+local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_tre q4_high_it_median
+local fe county week
+local vce rob
+local clusternote "Notes: Robust standard errors are reported in parentheses." 
+*local countynum N_clust
+local df "e(df_a_initial)"
+
+
+eststo: reghdfe initclaims_rate_regular tre  tre##`it_tre'  `con' if nopubfirm_qtl!=4 , absorb(`fe') vce(`vce')
+	estadd local thfixed "YES"
+	local nogroup = e(dof_table)[1,1]
+	estadd local countynum `nogroup'
+		
+
+eststo: reghdfe initclaims_rate_regular tre  tre##`it_tre'  `con' if sum_qtl!=4 , absorb(`fe') vce(`vce')
+	estadd local thfixed "YES"
+	local nogroup = e(dof_table)[1,1]
+	estadd local countynum `nogroup'
+		
+
+	#delimit ;
+esttab  _all using "`filename'", replace keep(tre 1.tre#1.`it_tre' `con')
+		order(tre 1.tre#1.`it_tre'   `con')
+		interaction("*")
+		title({\b Table 2. Main Effect})
+		mtitles("Exclude counties of a high number of public firms" "Exclude counties of high total assets of public firms")
+		label stat( r2 N countynum thfixed,
+		fmt( %9.3f %9.0g %9.0g ) labels( R-squared Observations "No. Counties" "County & Week FE"))
+		 b(3) nogap onecell 
+		nonotes addnote("`clusternote'" "`starnote'")
+		nobaselevels 
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+est clear
+
+
+
+
+
+**# strigency index
+
+
+* process data
+
+
+
+import excel "C:\Users\Leting\Documents\2.Covid_IT_Employment\1.Data\1.raw_data\stringency_index_use.xlsx", sheet("stringency_index (2)") firstrow
+drop country_code country_name
+reshape long index, i( region_code region_name jurisdiction ) j(date, string)
+sort region_code date index
+gen date2 = date(date, "DMY")
+g week = week(date2 )
+g state = substr(region_code, 4,2)
+g year = year(date2)
+drop if year == 2021
+bys region_name week: egen index_weekly = mean( index )
+ 
+ frame change default
+frlink m:1 state week, frame(stringency) generate(link1)
+frget index_weekly  =  index_weekly, from(link1)
+ 
+ 
+ 
+ * analyses
+local filename "result/stringency_analysis.rtf"
+local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_tre q4_high_it_median
+local fe county week
+local vce rob
+local clusternote "Notes: Robust standard errors are reported in parentheses." 
+*local countynum N_clust
+local df "e(df_a_initial)"
+
+eststo: reghdfe initclaims_rate_regular tre  tre##`it_tre'##c.index_weekly  `con' , absorb(`fe') vce(`vce')
+eststo: reghdfe initclaims_rate_regular `it_tre'##c.index_weekly  `con' , absorb(`fe') vce(`vce')
+
+#delimit ;
+esttab  _all using "`filename'", r keep(tre index_weekly  1.tre#1.`it_tre'#c.index_weekly  1.tre#1.`it_tre' 1.`it_tre'#c.index_weekly )
+		order(tre index_weekly  1.tre#1.`it_tre'#c.index_weekly  1.tre#1.`it_tre' 1.`it_tre'#c.index_weekl)
+		interaction("*")
+		title({\b Income})
+		label stat( r2 N countynum thfixed,
+		fmt( %9.3f %9.0g %9.0g ) labels( R-squared Observations "No. Counties" "County & Month FE"))
+		 b(3) nogap onecell 
+		nobaselevels 
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+est clear
+
+
+**# control for median house income & revenue
+
+local it_tre q4_high_it_median
+local fe county month
+local filename "C:/Users/Leting/Documents/2.Covid_IT_Employment/Stata/result/income&revenue_20230621.rtf"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+
+eststo: reghdfe initclaims_rate_regular tre  tre##`it_tre' tre##c.ln_income   `con' , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+
+eststo: reghdfe initclaims_rate_regular tre tre##`it_tre' tre##c.reven_median `con' , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+#delimit ;
+esttab  _all using "`filename'", r keep(tre  1.tre#1.`it_tre' 1.tre#c.ln_income 1.tre#c.reven_median  `con')
+		order(tre  1.tre#1.`it_tre' 1.tre#c.ln_income 1.tre#c.reven_median  `con')
+		interaction("*")
+		title({\b Income & Revenue})
+		label stat( r2 N countynum thfixed,
+		fmt( %9.3f %9.0g %9.0g ) labels( R-squared Observations "No. Counties" "County & Month FE"))
+		 b(3) nogap onecell 
+		nobaselevels 
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+est clear
+ 
+ 
+ **# Moderating role of variance
+ 
+ 
+ labvars emple_var reven_var it_budget_var  "Var(Employment)" "Var(Revenue)" "Var(IT Budget)"
+ 
+eststo: reghdfe initclaims_rate_regular tre tre##`it_tre'##c.emple_var `con' , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+eststo: reghdfe initclaims_rate_regular tre tre##`it_tre'##c.reven_var `con' , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+eststo: reghdfe initclaims_rate_regular tre tre##`it_tre'##c.it_budget_var `con' , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+
+
+local threeinterlist `threeinterlist' 1.tre#1.`it_tre'`i'#c.emple_var "After Stay at Home * HighRBIIT * Variance"  1.tre#1.`it_tre'`i'#c.reven_var "After Stay at Home * HighRBIIT * Variance"  1.tre#1.`it_tre'`i'#c.it_budget_var "After Stay at Home * HighRBIIT * Variance"
+local interlist `interlist' 1.tre#c.emple_var "After Stay at Home * Variance"  1.tre#c.reven_var "After Stay at Home * Variance"  1.tre#c.it_budget_var "After Stay at Home * Variance"
+
+
+#delimit ;
+esttab  _all using "`filename'", r keep(tre  1.tre#1.`it_tre' "After Stay at Home * HighRBIIT * Variance" "After Stay at Home * Variance"  )
+		order(tre  1.tre#1.`it_tre' "After Stay at Home * HighRBIIT * Variance" "After Stay at Home * Variance"  )
+		interaction("*")
+		title({\b Variance})
+		label stat( r2 N countynum thfixed,
+		fmt( %9.3f %9.0g %9.0g ) labels( R-squared Observations "No. Counties" "County & Month FE"))
+		 b(3) nogap onecell 
+		nobaselevels 
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+est clear
+ 
+
+**# Monthly analyses
+
+
+frame copy default countymonth
+frame change countymonth
+preserve
+bys county month: egen tre_month = max( tre )
+collapse tre_month initclaims_rate_regular avg_new_death_rate avg_new_case_rate avg_home_prop q4_high_it_median , by(county month)
+xtset county month
+
+labvars  tre_month q4_high_it_median initclaims_rate_regular  avg_new_death_rate avg_new_case_rate avg_home_prop "After Stay at Home" "HighBAIT"  "Unemployment Rate"  "COVID Death Rate" "COVID New Case Rate" "Stay at Home Index"
+
+
+local it_tre q4_high_it_median
+local fe county month
+local filename "C:/Users/Leting/Documents/2.Covid_IT_Employment/Stata/result/monthly_anlaysis20230610.rtf"
+
+local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_tre q4_high_it_median
+local vce rob
+local clusternote "Notes: Robust standard errors are reported in parentheses." 
+*local countynum N_clust
+local df "e(df_a_initial)"
+
+
+eststo: reghdfe initclaims_rate_regular `it_tre'##tre_month `con' , absorb(`fe') vce(rob)
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+
+#delimit ;
+esttab  _all using "`filename'", a keep(tre  1.`it_tre'#1.tre_month `con')
+		order(tre  1.`it_tre'#1.tre_month  `con')
+		interaction("*")
+		title({\b Monthly Effect})
+		label stat( r2 N countynum thfixed,
+		fmt( %9.3f %9.0g %9.0g ) labels( R-squared Observations "No. Counties" "County & Month FE"))
+		 b(3) nogap onecell 
+		nobaselevels 
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+est clear
+
+*		nonotes addnote("`clusternote'" "`starnote'")
+
+**# normalized IT budget
+
+local it_tre q4_high_it_median
+local fe county month
+local filename "C:/Users/Leting/Documents/2.Covid_IT_Employment/Stata/result/normalizedIT20230622.rtf"
+
+local starlevel "* 0.10 ** 0.05 *** 0.01"
+local starnote "*** p<0.01, ** p<0.05, * p<0.1"
+local con "avg_new_death_rate avg_new_case_rate avg_home_prop"
+local it_tre q4_high_it_median
+local vce rob
+local clusternote "Notes: Robust standard errors are reported in parentheses." 
+*local countynum N_clust
+local df "e(df_a_initial)"
+
+labvars ln_it_per_site  ln_it_per_pop "ln(RBIT per Site)" "ln(RBIT per capita)"
+
+eststo:reghdfe initclaims_rate_regular tre tre##c.ln_it_per_site `con' , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+
+
+eststo:reghdfe initclaims_rate_regular tre tre##c.ln_it_per_pop `con' , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+#delimit ;
+esttab  _all using "`filename'", a keep(tre  1.tre#c.ln_it_per_site  1.tre#c.ln_it_per_pop   `con')
+		order(tre  1.tre#c.ln_it_per_site  1.tre#c.ln_it_per_pop   `con')
+		interaction("*")
+		title({\b Normalized IT })
+		label stat( r2 N countynum thfixed,
+		fmt( %9.3f %9.0g %9.0g ) labels( R-squared Observations "No. Counties" "County & Month FE"))
+		 b(3) nogap onecell 
+		nobaselevels 
+		starlevels( `starlevel') se ;
+	
+#delimit cr;
+est clear
+
+
+
+**# Incoporate 2021 data
+
+use "C:\Users\Leting\Documents\2.Covid_IT_Employment\1.Data\3.output_data\county_2021.dta" 
+drop day_endofweek
+drop week
+rename week_use week
+merge 1:1 county  week using "C:\Users\Leting\Documents\2.Covid_IT_Employment\1.Data\3.output_data\county_month_panel_april_2024_additional.dta"
+order week, a(county)
+sort county  q4_high_it_median
+bys county: replace q4_high_it_median =  q4_high_it_median[1]
+sort county week
+g tre_2021 = tre
+bys county: replace tre_2021 = tre_2021[_n-1] if tre_2021==.
+local it_tre q4_high_it_median
+local fe county week
+local vce rob
+reghdfe initclaims_rate_regular tre_2021 tre_2021##q4_high_it_median  , absorb(`fe') vce(`vce')
+reghdfe initclaims_rate_regular tre_2021 tre_2021##q4_high_it_median avg_new_death_rate avg_new_case_rate , absorb(`fe') vce(`vce')
+reghdfe initclaims_rate_regular tre_2021 tre_2021##q4_high_it_median avg_new_death_rate avg_new_case_rate if week<70 , absorb(`fe') vce(`vce')
+reghdfe initclaims_rate_regular tre_2021 tre_2021##q4_high_it_median avg_new_death_rate  if week<70 , absorb(`fe') vce(`vce')
+reghdfe initclaims_rate_regular tre_2021 tre_2021##q4_high_it_median avg_new_death_rate  , absorb(`fe') vce(`vce')
+reghdfe initclaims_rate_regular tre_2021 tre_2021##q4_high_it_median avg_new_death_rate if week<70 , absorb(`fe') vce(`vce')
+reghdfe initclaims_rate_regular tre_2021 tre_2021##q4_high_it_median if week<60 , absorb(`fe') vce(`vce')
+
 
 
 

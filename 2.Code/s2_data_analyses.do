@@ -554,6 +554,20 @@ esttab  _all using "`filename'", a keep(tre 1.tre#*1.`it_tre'#c.agriculture 1.tr
 est clear
 
 
+
+
+est clear
+
+ 
+eststo:reghdfe initclaims_rate_regular tre tre#`it_tre' c.industry_emp1#i.week `con' , absorb(`fe') vce(`vce')
+estadd local thfixed "YES"
+local nogroup = e(dof_table)[1,1]
+estadd local countynum `nogroup'
+
+
+
+
+
 **# Heterogneity 3: Occupations of skill levels
 
 // if $occupation == 1 {
@@ -994,3 +1008,7 @@ graph export "C:\Users\Leting\Documents\2.Covid_IT_Employment\3.Report\phillycas
 // }
 //
 
+
+*# 2023 Nov 4
+use "C:\Users\Leting\Documents\2.Covid_IT_Employment\1.Data\3.output_data\county_month_panel_july_2023.dta"
+reghdfe initclaims_rate_regular tre 1.tre#1.`it_tre' `con' , absorb(`fe' industry_emp1#i.week industry_emp2#i.week industry_emp3#i.week industry_emp4#i.week industry_emp5#i.week industry_emp6#i.week industry_emp7#i.week industry_emp8#i.week) vce(`vce')

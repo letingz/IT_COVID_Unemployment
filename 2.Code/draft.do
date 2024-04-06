@@ -33,7 +33,7 @@ estadd local countynum `nogroup'
 #delimit;
 esttab  _all using "`filename'", r keep(`keepvar') 
 		order(`keepvar' )		
-		title("Exclude counties of a higher number of public firms"")
+		title("Exclude counties of a higher number of public firms")
 		label stat(r2 N countynum thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week & County FE"))
 		 b(3) nogap onecell 

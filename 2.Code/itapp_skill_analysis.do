@@ -12,7 +12,7 @@ local it_group "app_per_median enterp_per_median cloud_per_median groupware_per_
 local industry_group "agriculture construction manufacturing wholesale retail transportation information insurance"
 local occupation_group "lowskilloc midskilloc highskilloc"
 local subtitle " "App Dev" "Ente" "Cloud" "Groupware PC" "Market" "Security"  "Network" "
-local filename "result/ittype_skill_median_analyses.rtf"
+local filename "result/ittype_skill_median_analyses_20230618.rtf"
 
 *local geo geo_ne geo_ma geo_sh geo_mw geo_sw geo_aw
 *local itapp app_per_median enterp_per_median cloud_per_median groupware_per_median market_per_median security_per_median network_per_median
@@ -133,8 +133,8 @@ local interlist `interlist' 1.tre#c.`g' "After Stay at Home * IT Applications"
 
 #delimit;
 esttab  _all using "`filename'", a rename(`threeinterlist' `interlist') keep(tre  "After Stay at Home * IT Application * High Skill" "After Stay at Home * IT Applications"
-  1.tre#1.`it_tre' `con')
-		order(tre  "After Stay at Home * IT Application * High Skill" "After Stay at Home * IT Applications" 1.tre#1.`it_tre' `con' )		
+`con')
+		order(tre  "After Stay at Home * IT Application * High Skill" "After Stay at Home * IT Applications" `con' )		
 		title("High Skill")
 		label stat(r2 N countynum thfixed,
 		fmt( %9.3f %9.0g %9.0g) labels( R-squared Observations "No. Counties" "Week & County FE"))

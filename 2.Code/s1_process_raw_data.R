@@ -43,7 +43,6 @@ out_data_path <- here("1.Data","3.output_data")
 
 ####### LOG  #######
 
-# TODO LIST 
 
 
 ############# IMPORT & CLEAN DATA ###############
@@ -255,15 +254,24 @@ library(tidycensus)
 
 #usethis::edit_r_environ()
 #Use your census_api_key
+#census_api_key("c398f8d9513b22463637096597e4bd7ea0be7e4f")
+
+readRenviron("~/.Renviron")
 
 all_vars_acs5_19 <- 
   load_variables(year = 2019, dataset = "acs5/profile")
 
+head(all_vars_acs5_19 )
+
+
+
+# data dictionary : https://api.census.gov/data/2019/acs/acs5/profile/groups/DP02.html
 
 var <-  c( "DP02_0001", "DP02_0018", "DP02_0067P", "DP02_0068P",
            "DP02_0152P", "DP02_0153P", "DP03_0062", "DP03_0063",
            "DP03_0033P", "DP03_0034P","DP03_0035P","DP03_0036P","DP03_0037P", "DP03_0038P", "DP03_0039P", "DP03_0040P",
-           "DP03_0041P","DP03_0042P","DP03_0043P","DP03_0044P","DP03_0045P",   "DP03_0096P")
+           "DP03_0041P","DP03_0042P","DP03_0043P","DP03_0044P","DP03_0045P",   "DP03_0096P", "DP05_0018",
+           "DP05_0038P" )
 
 
 var_info <- all_vars_acs5_19 %>% 
@@ -277,6 +285,8 @@ df_acs <-
   )
 
 colnames(var_info)[1] <- "variable"
+
+#20230523 add new variables
 
 df_acs <- df_acs %>% 
   left_join(var_info)
@@ -305,7 +315,10 @@ df_acs1 <- df_acs %>%
     variable == "DP03_0045P" ~ "publicadmin",
     variable == "DP03_0062" ~ "medianhouseholdincome",
     variable == "DP03_0063" ~ "meanincome",
-    variable == "DP03_0096P" ~ "healthinsurance"
+    variable == "DP03_0096P" ~ "healthinsurance",
+    variable == "DP05_0018" ~ "medianage",
+    variable == "DP05_0038P" ~ "blackper"
+    
     
   )) %>% 
   select(c("GEOID", "estimate", "name"))
@@ -313,7 +326,7 @@ df_acs1 <- df_acs %>%
 
 df_acs1$countyfips <- as.numeric(df_acs1$GEOID)
 
-county_acs <- df_acs1 %>% filter(name %in% c("internetper", "meanincome", "medianhouseholdincome", 
+county_acs <- df_acs1 %>% filter(name %in% c("medianage", "blackper", "internetper", "meanincome", "medianhouseholdincome", 
                                               "population", "totalhousehold", "highschoolhigherper", 
                                                 "bachelorhigherper", "computerper",
                                                 "agriculture", "construction", "manufacturing", "wholesale", 
@@ -323,6 +336,10 @@ county_acs <- df_acs1 %>% filter(name %in% c("internetper", "meanincome", "media
                         names_from = name , 
                         values_from = c(estimate)
                       )
+
+library(foreign)
+write.dta(county_acs, here(out_data_path, "county_acs_new.dta"))
+
 
 rm(df_acs, df,acs1)
 
@@ -529,6 +546,17 @@ colnames(ci_county_all)[16:26] <- c( "it_pbmedian", "hw_pbmedian", "pc_pbmedian"
                                     "ter_pbmedian", "pr_pbmedian","ohw_pbmedian", "sto_pbmedian", 
                                     "comm_pbmedian",  "sw_pbmedian", "ser_pbmedian")
 
+# ci normalize data
+
+ci_sum_it_use <- ci_data_use %>% select(SITEID, COUNTY, EMPLE,
+                       IT_BUDGET) %>% 
+  filter(EMPLE != 0 &  IT_BUDGET !=0) %>% 
+  group_by(COUNTY) %>%
+  summarize(total_it = sum(IT_BUDGET),
+            no_site = n_distinct(SITEID)) %>% 
+  ungroup()
+
+write.dta(ci_sum_it_use, here(int_data_path, "county_total_it.dta"))
 
 ############# Revised 2023: Derive mean value of BAIT #######
 
@@ -631,4 +659,72 @@ county_week_panel_use <-  county_week_panel %>% left_join(oews_use, by = c("coun
 write_dta(county_week_panel_use, here(out_data_path, "county_week_panel_dec_streamed.dta"))
 
 #county_week_panel <- read_dta(here("Stata", "county_week_panel_dec_streamed.dta"))
+
+############# 2021 and newer datasets #######
+
+ui_new_county <- read.csv(here(raw_data_path, "UI Claims - County - Weekly_updated.csv"), stringsAsFactors = F)
+
+ui_new_county <- ui_new_county%>% mutate_if(is.character,as.numeric)
+
+ui_new_county_week <- ui_new_county %>% 
+  mutate(date = ISOdate(year,month, day_endofweek),
+         week =  week(as.Date(date, "%Y-%m-%d"))) %>% 
+  filter(year <2022)
+
+
+covid_2020_county <- read.csv(here(raw_data_path, "COVID - County - Daily 2020.csv"), stringsAsFactors = F)
+covid_2020_county <- covid_2020_county%>% mutate_if(is.character,as.numeric)
+
+covid_2020_county_week <-  covid_2020_county %>% 
+  mutate(date = ISOdate(year,month, day),
+         week =  week(as.Date(date, "%Y-%m-%d"))) %>% 
+  group_by(countyfips,week,year) %>% 
+  summarise(case_count = max(case_count, na.rm = T),
+            death_count = max(death_count, na.rm = T),
+            case_rate = max(case_rate, na.rm = T),
+            death_rate = max(death_rate, na.rm = T),
+            avg_new_case_count = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, nna.rm = T),
+            avg_new_case_rate = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, na.rm =T),
+            
+  ) %>% ungroup()
+
+
+covid_2021_county <- read.csv(here(raw_data_path, "COVID - County - Daily 2021.csv"), stringsAsFactors = F)
+covid_2021_county <- covid_2021_county%>% mutate_if(is.character,as.numeric)
+
+covid_2021_county_week <-  covid_2021_county %>% 
+  mutate(date = ISOdate(year,month, day),
+         week =  week(as.Date(date, "%Y-%m-%d"))) %>% 
+  group_by(countyfips,week,year) %>% 
+  summarise(case_count = max(case_count, na.rm = T),
+            death_count = max(death_count, na.rm = T),
+            case_rate = max(case_rate, na.rm = T),
+            death_rate = max(death_rate, na.rm = T),
+            avg_new_case_count = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, nna.rm = T),
+            avg_new_case_rate = mean(new_case_count, na.rm = T),
+            avg_new_death_rate = mean(new_death_count, na.rm =T),
+            
+  ) %>% ungroup()
+
+
+covid_new_county_week <- rbind(covid_2020_county_week, covid_2021_county_week)
+
+county_new_week_panel <- ui_new_county_week %>% 
+  full_join(covid_new_county_week)
+
+county_new_week_panel_use <- ui_new_county_week %>% 
+  left_join(covid_new_county_week) %>% 
+  mutate(week_use = ifelse(year == 2021, week+52, week))
+
+
+colnames(county_new_week_panel_use)[4] <- "county"
+
+
+library(haven)
+
+write_dta(county_new_week_panel_use, here(out_data_path, "county_2021.dta"))
+
 

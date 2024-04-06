@@ -15,7 +15,7 @@ use "C:\Users\Leting\Documents\2.Covid_IT_Employment\Stata\county_week_panel_dec
 *frame drop matching
 compress
 
-g stayweek = statepolicy_week
+g stayweek = statepolicy_weekf
 replace stayweek = countypolicy_week if countypolicy_week< statepolicy_week
 g tre = (week>stayweek)
 order stayweek tre, a(countyfips)
@@ -170,3 +170,59 @@ labvars jobs_1000_health_sup_oc jobs_1000_protect_oc jobs_1000_food_ser_oc jobs_
 labvars jobs_1000_sale_oc jobs_1000_off_admin_oc jobs_1000_farm_fish_oc jobs_1000_construct_oc jobs_1000_inst_mainte_oc  "Sales and Related" "Office and Administrative Support" "Farming, Fishing, and Forestry" "Construction and Extraction" "Installation, Maintenance, and Repair"
 
 labvars jobs_1000_prodct_oc jobs_1000_trans_oc "Production" "Transportation and Material Moving"
+
+**# data attrition
+frame copy default datacheck
+frame change datacheck
+bys county: egen count_missemp = total(missing( initclaims_rate_regular ) )
+bys county: egen count_misscovidd = total(missing( avg_new_case_count ) )
+bys county: egen count_misscovidc = total(missing( avg_new_case_rate ) )
+bys county: egen count_misshomein = total(missing( avg_home_prop ) )
+g allmiss_emp = ( count_missemp == count_county )
+table allmiss_emp
+g allmiss_covidd = ( count_misscovidd == count_county )
+g allmiss_covidc = ( count_misscovidc == count_county )
+g allmiss_home = ( count_misshomein == count_county )
+preserve
+drop skillq2_county count-skillq2_county
+keep county allmiss_emp-allmiss_home
+duplicates drop
+
+
+
+
+
+frame create countyfeature
+frame change countyfeature
+use "C:\Users\Leting\Documents\2.Covid_IT_Employment\1.Data\3.output_data\county_acs_new.dta"
+
+
+duplicates drop
+rename countyfips county
+frame change datacheck
+frame change countyfeature
+frlink 1:1 county, frame(datacheck) generate(link)
+frget *, from(link)
+ttest totalhousehold, by( allmiss_emp )
+
+local vars totalhousehold population highschoolhigherper bachelorhigherper computerper internetper agriculture construction manufacturing wholesale retail transportation information insurance medianhouseholdincome meanincome medianage blackper
+
+local labels "Total Household"  "Population"  "High School or Higher (%)" "Bachelor or Higher (%)" "Computer (%)" "Internet (%)" "Agriculture" "Construction" "Manufacturing" "Wholesale" "Retail" "Transportation" "Information" "Insurance" "Median Household Income" "Mean Income" "Median Age" "Black or African (%)"
+
+
+labvars totalhousehold population highschoolhigherper bachelorhigherper computerper internetper agriculture construction manufacturing wholesale retail transportation information insurance medianhouseholdincome meanincome medianage blackper "Total Household"  "Population"  "High School or Higher (%)" "Bachelor or Higher (%)" "Computer (%)" "Internet (%)" "Agriculture" "Construction" "Manufacturing" "Wholesale" "Retail" "Transportation" "Information" "Insurance" "Median Household Income" "Mean Income" "Median Age" "Black or African (%)"
+
+
+foreach i of local vars {
+    foreach j of local labels {
+	    label variable `i' `j'
+	}
+}
+
+estpost ttest `vars', by( allmiss_emp )
+esttab ., cells("mu_1 mu_2 p") nonumber label
+
+
+
+
+

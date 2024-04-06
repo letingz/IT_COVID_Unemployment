@@ -229,44 +229,75 @@ county_unemprate_19_20 <- county_unemprate_19_20 %>%
 # Read data: county IT budget
 county_week <- as.data.frame(read_dta(here(output, "county_week_panel_april_2023.dta"))) 
 
-county_it <- county_week %>% select(county, q4_high_it_median,q2_high_lowskill, q4_high_lowskill) %>% distinct()%>%mutate(countyfips = as.integer(county))
+county_it <- county_week %>% select(county, month, initclaims_rate_regular, new_q4_high_it,skillq4_county_exc, skillq4_county, skillq2_county) %>% distinct()%>%mutate(countyfips = as.integer(county))
 
 county_info <- read.csv(here(raw_data, "GeoIDs - County.csv"))
 county_info <- county_info %>% 
   mutate(county_name = paste(countyname, ",", " ", stateabbrev, sep = "")) %>% 
   select(countyfips, county_name)
 
-county_use <- county_it %>% 
-  left_join(county_info) %>% 
-  left_join(county_unemprate_19_20) %>% 
-  filter(period != "M13") %>% 
-  mutate(month = as.numeric(substr(period, 2, 3)),
-         date = as.yearmon(paste(year,month, sep = "-")) )
+county_use <- county_it
+#%>% 
+#  left_join(county_info) %>% 
+ # left_join(county_unemprate_19_20) %>% 
+# filter(period != "M13") %>% 
+  #mutate(month = as.numeric(substr(period, 2, 3)),
+     #    date = as.yearmon(paste(year,month, sep = "-")) )
+
+
+
+county_it <- county_week %>% select(county, month, initclaims_rate_regular, new_q4_high_it,skillq4_county_exc, skillq4_county, skillq2_county) %>% distinct()%>%mutate(countyfips = as.integer(county))
+
+
+
+
+
+
 
 ```
-```{r Summarize and calculate the mean value}
-it_group_county_unemployrate <- county_use %>% 
-  mutate(value = as.numeric(value)) %>% 
-  group_by(q4_high_it_budget_median, date) %>% 
-  summarise(unemployment = mean(value, na.rm = TRUE)) %>% 
-  ungroup()
 
-
-skill_group_county_unemployrate <- county_use %>% 
-  mutate(value = as.numeric(value)) %>% 
-  group_by(q2_high_lowskill, date) %>% 
-  summarise(unemployment = mean(value, na.rm = TRUE)) %>% 
-  ungroup()
-```
 
 ```{r}
+county_it_new <- county_week %>% select(county, new_q4_high_it,skillq4_county_exc, skillq4_county, skillq2_county) %>% distinct()%>%mutate(countyfips = as.integer(county))
 
-skill_group_county_unemployrate %>% filter(!is.na(q2_high_lowskill)) %>%
+county_info <- read.csv(here(raw_data, "GeoIDs - County.csv"))
+county_info <- county_info %>% 
+  mutate(county_name = paste(countyname, ",", " ", stateabbrev, sep = "")) %>% 
+  select(countyfips, county_name)
+
+county_use_new <- county_it_new%>%
+ left_join(county_info) %>%
+left_join(county_unemprate_19_20) %>%
+filter(period != "M13") %>%
+mutate(month = as.numeric(substr(period, 2, 3)),
+   date = as.yearmon(paste(year,month, sep = "-")),
+   value = as.numeric(value))
   
-  ggplot(aes(x = date, y = unemployment, 
-            color = factor(q2_high_lowskill) )) +
+
+
+
+
+skill_group_county_unemployrate_new <- county_use_new %>%
+  group_by( new_q4_high_it, skillq4_county_exc,date) %>%
+  mutate(unemp_q4_exc = mean(value, na.rm = TRUE)) %>%
+  group_by(new_q4_high_it, skillq4_county,date) %>%
+  mutate(unemp_q4 = mean(value, na.rm = TRUE)) %>%
+  group_by(new_q4_high_it, skillq2_county,date) %>%
+   mutate(unemp_q2 = mean(value, na.rm = TRUE)) %>%
+  ungroup()  %>%
+  select( date, new_q4_high_it, skillq4_county_exc, skillq4_county, skillq2_county,
+         unemp_q4_exc, unemp_q4, unemp_q2 ) %>%
+  distinct()
+```
+
+
+
+```{r County-level -Unemployment rates for counties of different skill-level}
+skill_group_county_unemployrate_new %>% filter(!is.na(skillq4_county_exc) & new_q4_high_it == 1 &  skillq4_county_exc!='') %>%
+  ggplot(aes(x = date, y = unemp_q4_exc, 
+            color = factor( skillq4_county_exc))) +
   geom_line(size= 1.2) +
-  scale_color_manual(name = "Low Skill", labels = c("YES", "NO"),values=c( "blue", "red"))+
+  scale_color_manual(values=c( "blue", "red","grey"))+
   labs(x = "", y = " % Rate", title = "County Unemployment Rate: 2019 - 2020") +  
       theme_minimal() + 
       theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
@@ -278,12 +309,168 @@ skill_group_county_unemployrate %>% filter(!is.na(q2_high_lowskill)) %>%
 ```
 
 
-```{r Plot}
+
+```{r}
+skill_group_county_unemployrate_new %>% filter(!is.na(skillq4_county) & new_q4_high_it == 1 &  skillq4_county!='') %>%
+  ggplot(aes(x = date, y = unemp_q4, 
+            color = factor( skillq4_county))) +
+  geom_line(size= 1.2) +
+  scale_color_manual(values=c( "blue", "red","grey"))+
+  labs(x = "", y = " % Rate", title = "County Unemployment Rate: 2019 - 2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+  
+```
+
+```{r}
+skill_group_county_unemployrate_new %>% filter(!is.na(skillq2_county) & new_q4_high_it == 1 &  skillq2_county!='') %>%
+  ggplot(aes(x = date, y = unemp_q2, 
+            color = factor( skillq2_county))) +
+  geom_line(size= 1.2) +
+  scale_color_manual(values=c( "blue", "red","grey"))+
+  labs(x = "", y = " % Rate", title = "County Unemployment Rate: 2019 - 2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+  
+```
+
+
+
+```{r Summarize and calculate the mean value}
+it_group_county_unemployrate <- county_use %>% 
+  mutate(value = as.numeric(value)) %>% 
+  group_by(q4_high_it_budget_median, date) %>% 
+  summarise(unemployment = median(value, na.rm = TRUE)) %>% 
+  ungroup() 
+  
+
+skill_group_county_unemployrate <- county_use %>%
+  group_by( new_q4_high_it, skillq4_county_exc, month) %>%
+  mutate(unemp_q4_exc = mean(initclaims_rate_regular, na.rm = TRUE)) %>%
+  group_by(new_q4_high_it, skillq4_county, month) %>%
+  mutate(unemp_q4 = mean(initclaims_rate_regular, na.rm = TRUE)) %>%
+  group_by(new_q4_high_it, skillq2_county, month) %>%
+   mutate(unemp_q2 = mean(initclaims_rate_regular, na.rm = TRUE)) %>%
+  ungroup()  %>%
+  select( month, new_q4_high_it, skillq4_county_exc, skillq4_county, skillq2_county,
+         unemp_q4_exc, unemp_q4, unemp_q2 ) %>%
+  distinct()
+
+
+
+skill_group_DEMO <- county_use %>%
+  group_by( new_q4_high_it, skillq4_county_exc, month) %>%
+  summarise(unemp_q4_exc = mean(initclaims_rate_regular, na.rm = TRUE))
+
+
+
+
+skill_group_DEMO %>% filter(!is.na(skillq4_county_exc) & !is.na(new_q4_high_it) &  skillq4_county_exc!='') %>%
+  ggplot(aes(x = month, y = unemp_q4_exc, 
+            color = (factor( skillq4_county_exc)))) +
+  geom_line(aes(linetype =  factor(new_q4_high_it)), size= 1.2) + 
+  scale_x_continuous(breaks = seq(1,10,1), 
+                                labels = function(x)month.abb[x]) +
+scale_linetype_manual(values = c("dotdash", "solid"), labels = c("Low", "High"))+
+  scale_color_manual(values=c( "blue", "red","grey"))+
+  guides(color = guide_legend(title = "Skill-level"),
+        linetype = guide_legend(title = "BAIT")) +
+  labs(x = "", y = " % Rate", title = "County Unemployment Rate:2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+
+```
+
+
+```{r}
+table(skill_group_county_unemployrate$skillq4_county_exc)
+table(skill_group_county_unemployrate$skillq4_county)
+table(skill_group_county_unemployrate$skillq2_county)
+```
+
+
+```{r}
+
+
+skill_group_county_unemployrate %>% filter(!is.na(skillq4_county_exc) & !is.na(new_q4_high_it) &  skillq4_county_exc!='') %>%
+  ggplot(aes(x = month, y = unemp_q4_exc, 
+            color = (factor( skillq4_county_exc)))) +
+  geom_line(aes(linetype =  factor(new_q4_high_it)), size= 1.2) + 
+  scale_x_continuous(breaks = seq(1,10,1), 
+                                labels = function(x)month.abb[x]) +
+scale_linetype_manual(values = c("dotdash", "solid"), labels = c("Low", "High"))+
+  scale_color_manual(values=c( "blue", "red","grey"))+
+  guides(color = guide_legend(title = "Skill-level"),
+        linetype = guide_legend(title = "BAIT")) +
+  labs(x = "", y = " % Rate", title = "County Unemployment Rate:2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+  
+```
+
+```{r}
+skill_group_county_unemployrate %>% filter(!is.na(skillq4_county) & !is.na(new_q4_high_it) &  skillq4_county!='') %>%
+  ggplot(aes(x = month, y = unemp_q4, 
+            color = (factor( skillq4_county)))) +
+  geom_line(aes(linetype =  factor(new_q4_high_it)), size= 1.2) +
+  scale_x_continuous(breaks = seq(1,10,1), 
+                                labels = function(x)month.abb[x]) + 
+scale_linetype_manual(values = c("dotdash", "solid"), labels = c("Low", "High"))+
+  scale_color_manual(values=c( "blue", "red","grey"))+
+  guides(color = guide_legend(title = "Skill-level"),
+        linetype = guide_legend(title = "BAIT")) +
+  labs(x = "", y = " % Rate", title = "County Unemployment Rate:2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+```
+
+```{r}
+skill_group_county_unemployrate %>% filter(!is.na(skillq2_county) & !is.na(new_q4_high_it) &  skillq2_county!='') %>%
+  ggplot(aes(x = month, y = unemp_q2, 
+            color = (factor( skillq2_county)))) +
+  geom_line(aes(linetype =  factor(new_q4_high_it)), size= 1.2) +
+  scale_x_continuous(breaks = seq(1,10,1), 
+                                labels = function(x)month.abb[x]) + 
+scale_linetype_manual(values = c("dotdash", "solid"), labels = c("Low", "High"))+
+  scale_color_manual(values=c( "blue", "red","grey"))+
+  guides(color = guide_legend(title = "Skill-level"),
+        linetype = guide_legend(title = "BAIT")) +
+  labs(x = "", y = " % Rate", title = "County Unemployment Rate:2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+```
+
+
+```{r Plot Unemployment rates based on county BAIT}
 
 it_group_county_unemployrate %>% 
   
   ggplot(aes(x = date, y = unemployment, 
-            color = factor(q4_high_it_budget_median) )) +
+            color = factor(new_q4_high_it) )) +
   geom_line(size= 1.2) +
   scale_color_manual(name = "High BAIT", labels = c("YES", "NO"),values=c( "blue", "red"))+
   labs(x = "", y = " % Rate", title = "County Unemployment Rate: 2019 - 2020") +  
@@ -297,6 +484,30 @@ it_group_county_unemployrate %>%
 
 ```
 
+
+```{r}
+county_week_use <- county_week %>% select(county, week, initclaims_rate_regular, new_q4_high_it) %>% filter(!is.na(new_q4_high_it) ) %>% distinct()%>%
+group_by(week, new_q4_high_it) %>% 
+summarise(unemployment = mean(initclaims_rate_regular, na.rm = TRUE))
+
+
+
+
+county_week_use %>% 
+  
+  ggplot(aes(x = week, y = unemployment, 
+            color = factor(new_q4_high_it) )) +
+  geom_line(size= 1.2) +
+  scale_color_manual(name = "High BAIT", labels = c("YES", "NO"),values=c( "blue", "red"))+
+  labs(x = "", y = " % Rate", title = "County Weekly Unemployment Rate: 2019 - 2020") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
+
+```
 
 
 #Plots - BAIT distribution map 
@@ -372,9 +583,9 @@ county_week_use %>%
 ```{r}
 
 plot <- county_week %>% 
-  select(month, county, stayweek, tre, initclaims_rate_regular,q4_high_it_budget_median) %>% 
+  select(month, county, stayweek, tre, initclaims_rate_regular,q4_high_it) %>% 
   filter( !is.na(stayweek)) %>% 
-  group_by(month, q4_high_it_budget_median) %>% 
+  group_by(month, q4_high_it) %>% 
   summarise(avg_initclaims_rate = mean(initclaims_rate_regular, na.rm = TRUE))
 
 
@@ -411,5 +622,32 @@ plot %>%
   annotate("segment", x = 2, xend = 2.8, y = 1.8, yend =2.3 ,
            colour = "black", size = 1, arrow = arrow())
 
+```
+
+# Update 2024 April
+```{r Plots }
+
+
+county_new_week_pane_use
+
+
+county_new_plot_week_use <- county_new_week_panel_use %>% select(countyfips, week_use, initclaims_rate_regular)  %>% distinct()%>%
+group_by(week_use) %>% 
+summarise(unemployment = mean(initclaims_rate_regular, na.rm = TRUE))
+
+
+
+
+county_new_plot_week_use %>% 
+  
+  ggplot(aes(x = week_use, y = unemployment)) +
+  geom_line(size= 1.2) +
+  labs(x = "", y = " % Rate", title = "County Weekly Unemployment Rate: 2020 - 2021") +  
+      theme_minimal() + 
+      theme(plot.title = element_text(size = rel(1.6), hjust = 0.5),
+           legend.title = element_text(size = rel(0.8)),
+           plot.caption = element_text(size = rel(1)),
+           legend.position = "top") +
+    labs(caption = "Data Source: U.S. Bureau of Labor Statistics - Local Area Unemployment Statistics (LAUS)")
 ```
 
